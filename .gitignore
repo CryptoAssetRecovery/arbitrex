@@ -9,3 +9,4 @@ venv/
 *.jsonl
 *.pdf
 *.xlsx
+.env

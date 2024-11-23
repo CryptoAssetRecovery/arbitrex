@@ -3,9 +3,17 @@
 {% extends "base.html" %}
 {% load static %}
 {% load stat_filters %}
+{% load code_filters %}
+
+{% block head %}
+    {{ block.super }}
+    <!-- CodeMirror CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/monokai.min.css">
+{% endblock %}
 
 {% block content %}
-  <div class="w-[850px] mx-auto p-8 mt-8">
+  <div class="w-[1200px] mx-auto p-8 mt-8">
     <!-- Header Section -->
     <div class="flex justify-between items-center mb-8">
       <h2 class="text-3xl font-bold text-gray-800 overflow-hidden text-ellipsis whitespace-nowrap flex-1 mr-4">
@@ -96,12 +104,39 @@
     <div class="bg-white shadow rounded-lg p-6">
       <p class="text-gray-700 mb-4">{{ strategy.description }}</p>
       <h4 class="text-2xl font-semibold text-gray-800 mb-4">Strategy Code:</h4>
-      
-      <!-- Code Block -->
-      <pre class="bg-gray-100 p-4 rounded-md overflow-auto font-mono text-sm text-gray-800" style="max-height: 400px;">
+      <!-- CodeMirror Editor -->
+      <div class="-mx-6 -mb-6 rounded-b-lg">
+        <textarea id="strategy-code-editor" class="hidden">
 {{ strategy.code }}
-      </pre>
+        </textarea>
+      </div>
     </div>
 
   </div>
+{% endblock %}
+
+{% block scripts %}
+    {{ block.super }}
+    <!-- CodeMirror JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/python/python.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const textarea = document.getElementById("strategy-code-editor");
+            const editor = CodeMirror.fromTextArea(textarea, {
+                mode: "python",
+                theme: "monokai",
+                lineNumbers: true,
+                readOnly: true,
+                indentUnit: 4,
+                tabSize: 4,
+                lineWrapping: true,
+            });
+            editor.setSize("100%", "500px");
+            
+            // Add rounded corners to the CodeMirror element
+            editor.getWrapperElement().style.borderBottomLeftRadius = '0.5rem';
+            editor.getWrapperElement().style.borderBottomRightRadius = '0.5rem';
+        });
+    </script>
 {% endblock %}

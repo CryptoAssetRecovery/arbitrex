@@ -27,16 +27,18 @@ class StrategyForm(forms.ModelForm):
         fields = ['name', 'description', 'code']
         widgets = {
             'name': forms.TextInput(attrs={
-                'class': 'mt-1 block w-full bg-gray-50 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500'
+                'class': 'w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900',
+                'placeholder': 'Enter strategy name'
             }),
             'description': forms.Textarea(attrs={
-                'class': 'mt-1 block w-full bg-gray-50 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500',
-                'rows': 3
+                'class': 'w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900',
+                'rows': 3,
+                'placeholder': 'Describe your strategy'
             }),
             'code': forms.Textarea(attrs={
-                'class': 'mt-1 block w-full bg-gray-50 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 font-mono p-3',
+                'class': 'w-full font-mono bg-white text-gray-900',
                 'rows': 10,
-                'placeholder': '{"key": "value"}'
+                'placeholder': 'Enter your strategy code'
             }),
         }
 

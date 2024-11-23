@@ -9,4 +9,5 @@ urlpatterns = [
     path('<int:pk>/', views.StrategyDetailView.as_view(), name='strategy_detail'),
     path('<int:pk>/update/', views.StrategyUpdateView.as_view(), name='strategy_update'),
     path('<int:pk>/delete/', views.StrategyDeleteView.as_view(), name='strategy_delete'),
+    path('chat/', views.chat_with_ai, name='chat_with_ai'),
 ]

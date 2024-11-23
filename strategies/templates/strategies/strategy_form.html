@@ -3,42 +3,370 @@
 {% extends "base.html" %}
 {% load static %}
 
+{% block head %}
+    {{ block.super }}
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/monokai.min.css">
+    <style>
+        /* Styles for the main code editor */
+        .main-editor .CodeMirror {
+            height: 100% !important;  /* Keep original full-height behavior */
+            overflow-x: auto;
+        }
+
+        /* Styles for chat code blocks */
+        .chat-code-block .CodeMirror {
+            height: auto !important;  /* Allow chat code blocks to expand based on content */
+            overflow-x: auto;
+        }
+        
+        /* Common styles for both */
+        .CodeMirror-lines {
+            padding: 8px 0;
+        }
+        
+        .CodeMirror-linenumber {
+            padding: 0 8px;
+        }
+        
+        /* Add some spacing between chat code blocks */
+        .chat-code-block {
+            margin: 12px 0;
+        }
+
+        /* Markdown content styling */
+        .markdown-content {
+            line-height: 1.6;
+            font-size: 0.875rem;
+        }
+        .markdown-content p {
+            margin-bottom: 1rem;
+        }
+        .markdown-content h1, .markdown-content h2, .markdown-content h3, 
+        .markdown-content h4, .markdown-content h5, .markdown-content h6 {
+            font-weight: 600;
+            margin: 1.5rem 0 1rem 0;
+        }
+        .markdown-content ul, .markdown-content ol {
+            margin-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .markdown-content ul {
+            list-style-type: disc;
+        }
+        .markdown-content ol {
+            list-style-type: decimal;
+        }
+        .markdown-content a {
+            color: #4f46e5;
+            text-decoration: underline;
+        }
+        .markdown-content blockquote {
+            border-left: 4px solid #e5e7eb;
+            padding-left: 1rem;
+            margin: 1rem 0;
+            color: #6b7280;
+        }
+        .markdown-content code:not(.code-block) {
+            background-color: #f3f4f6;
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+            font-family: monospace;
+            font-size: 0.875em;
+        }
+    </style>
+{% endblock %}
+
 {% block content %}
-<div class="w-[800px] mx-auto bg-white p-8 mt-8 rounded shadow">
-    <h2 class="text-2xl font-bold mb-6 text-gray-800">
-        {% if form.instance.pk %}Update{% else %}Create{% endif %} Strategy
-    </h2>
+<div class="w-[1200px] mx-auto p-8 mt-8">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-8">
+        <h2 class="text-3xl font-bold text-gray-800">
+            {% if form.instance.pk %}Edit{% else %}Create{% endif %} Strategy
+        </h2>
+    </div>
+
+    <hr class="mb-6">
+
     <form method="POST" class="space-y-6">
         {% csrf_token %}
-        {% for field in form %}
-            <div>
-                <label for="{{ field.id_for_label }}" class="block text-gray-700 font-medium mb-2">
-                    {{ field.label }}
-                </label>
-                {% if field.name == "code" %}
+
+        <!-- Two Column Layout -->
+        <div class="grid grid-cols-2 gap-6">
+            <!-- Left Card: Code Editor -->
+            <div class="bg-white shadow rounded-lg p-6 flex flex-col" style="height: 1015px;">
+                <div class="mb-4">
+                    <h4 class="text-2xl font-semibold text-gray-800 mb-2">Code Editor</h4>
+                    <p class="text-sm text-gray-500">Write your strategy code here</p>
+                </div>
+                <div class="flex-1 overflow-hidden -mx-6 -mb-6 rounded-b-lg main-editor">
                     <textarea 
-                        id="{{ field.id_for_label }}" 
-                        name="{{ field.name }}" 
-                        class="mt-1 block w-full bg-gray-50 border border-gray-300 rounded-md shadow-sm 
-                               focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 
-                               font-mono p-3 overflow-x-scroll whitespace-pre"
-                        rows="10"
-                        placeholder="{{ field.field.widget.attrs.placeholder }}"
-                    >{{ field.value }}</textarea>
-                {% else %}
-                    {{ field }}
-                {% endif %}
-                {% if field.help_text %}
-                    <p class="text-gray-500 text-sm mt-1">{{ field.help_text }}</p>
-                {% endif %}
-                {% if field.errors %}
-                    <p class="text-red-500 text-sm mt-1">{{ field.errors }}</p>
-                {% endif %}
+                        id="{{ form.code.id_for_label }}" 
+                        name="{{ form.code.name }}" 
+                        class="hidden"
+                    >{{ form.code.value }}</textarea>
+                </div>
             </div>
-        {% endfor %}
-        <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            {% if form.instance.pk %}Update{% else %}Create{% endif %}
-        </button>
+
+            <!-- Right Card: Chat Area -->
+            <div class="block" style="height: 900px;">
+                <!-- Top Card: Name and Description -->
+                <div class="bg-white shadow rounded-lg p-6 mb-6">
+                    <div class="gap-6">
+                        <!-- Name Field -->
+                        <div class="space-y-2">
+                            <label for="{{ form.name.id_for_label }}" class="text-sm font-medium text-gray-700">
+                                {{ form.name.label }}
+                            </label><br>
+                            {{ form.name }}
+                            {% if form.name.help_text %}
+                                <p class="text-sm text-gray-500">{{ form.name.help_text }}</p>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Description Field -->
+                        <div class="space-y-2 mt-4">
+                            <label for="{{ form.description.id_for_label }}" class="text-sm font-medium text-gray-700">
+                                {{ form.description.label }}
+                            </label><br>
+                            {{ form.description }}
+                            {% if form.description.help_text %}
+                                <p class="text-sm text-gray-500">{{ form.description.help_text }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Card: Chat -->
+                <div class="bg-white shadow rounded-lg p-6 flex-1">
+                    <div class="mb-4">
+                    <h4 class="text-2xl font-semibold text-gray-800 mb-2">Chat</h4>
+                    <p class="text-sm text-gray-500">AI Assistant</p>
+                </div>
+                <div class="h-[600px] border-t border-gray-200 -mx-6 -mb-6">
+                    <div class="flex h-full flex-col">
+                        <div class="flex-1 overflow-y-auto p-4" id="chat-messages">
+                            <!-- Messages will go here -->
+                        </div>
+                        <div class="border-t border-gray-200 p-4">
+                            <div class="flex space-x-3">
+                                <input
+                                    type="text"
+                                    placeholder="Type your message..."
+                                    class="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    id="chat-input"
+                                />
+                                <button type="button" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500" id="send-message">
+                                    Send
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit Button - moved outside the grid -->
+        <div class="mt-6">
+            <button type="submit" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                {% if form.instance.pk %}Update{% else %}Create{% endif %} Strategy
+            </button>
+        </div>
     </form>
 </div>
+{% endblock %}
+
+{% block scripts %}
+    {{ block.super }}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/matchbrackets.min.js"></script>
+    <!-- Include any additional CodeMirror addons if needed -->
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const textarea = document.getElementById("{{ form.code.id_for_label }}");
+            const editor = CodeMirror.fromTextArea(textarea, {
+                mode: "python",
+                theme: "monokai",
+                lineNumbers: true,
+                indentUnit: 4,
+                tabSize: 4,
+                lineWrapping: false,
+                matchBrackets: true,
+            });
+            
+            // Set initial size
+            editor.setSize("100%", "100%");
+            
+            // Update size when window resizes
+            window.addEventListener('resize', () => {
+                editor.setSize("100%", "100%");
+            });
+            
+            // Chat functionality
+            const chatMessages = document.getElementById('chat-messages');
+            const chatInput = document.getElementById('chat-input');
+            const sendButton = document.getElementById('send-message');
+            
+            // Add message history array to store all messages
+            let messageHistory = [];
+            
+            function addMessage(content, isUser = false) {
+                // Store message in history
+                messageHistory.push({
+                    role: isUser ? 'user' : 'assistant',
+                    content: content
+                });
+                
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `flex ${isUser ? 'justify-end' : 'justify-start'}`;
+                
+                if (!isUser) {
+                    const parsedContent = parseContent(content);
+                    messageDiv.innerHTML = `
+                        <div class="max-w-[100%] mt-2 rounded-lg p-3 bg-white">
+                            <div class="markdown-content">
+                                ${parsedContent}
+                            </div>
+                        </div>
+                    `;
+                    
+                    initializeCodeMirrors(messageDiv);
+                } else {
+                    messageDiv.innerHTML = `
+                        <div class="max-w-[80%] mt-2 rounded-lg p-3 bg-indigo-100">
+                            <p class="text-sm whitespace-pre-wrap">${escapeHTML(content)}</p>
+                        </div>
+                    `;
+                }
+                
+                chatMessages.appendChild(messageDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            
+            function parseContent(content) {
+                // Configure marked.js
+                marked.setOptions({
+                    highlight: function(code, lang) {
+                        // Return undefined to let CodeMirror handle the syntax highlighting
+                        return undefined;
+                    },
+                    breaks: true,
+                    gfm: true
+                });
+
+                // Use a regular expression to detect code blocks
+                const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
+                let match;
+                let lastIndex = 0;
+                let parsed = '';
+                
+                while ((match = codeBlockRegex.exec(content)) !== null) {
+                    const [fullMatch, lang, code] = match;
+                    const start = match.index;
+                    
+                    // Parse the text before the code block as markdown
+                    const beforeCode = content.substring(lastIndex, start);
+                    parsed += marked.parse(beforeCode);
+                    
+                    // Create a unique identifier for the code block
+                    const codeBlockId = `code-block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                    
+                    // Insert a pre > code element with the code
+                    parsed += `<pre><code id="${codeBlockId}" class="code-block" data-lang="${lang || 'text'}">${escapeHTML(code)}</code></pre>`;
+                    
+                    lastIndex = codeBlockRegex.lastIndex;
+                }
+                
+                // Parse any remaining text as markdown
+                const remainingText = content.substring(lastIndex);
+                parsed += marked.parse(remainingText);
+                
+                return parsed;
+            }
+            
+            function escapeHTML(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+            
+            function initializeCodeMirrors(container) {
+                const codeBlocks = container.querySelectorAll('pre > code.code-block');
+                
+                codeBlocks.forEach((block) => {
+                    const lang = block.getAttribute('data-lang') || 'text';
+                    const code = block.textContent.trim();
+                    
+                    const textarea = document.createElement('textarea');
+                    textarea.value = code;
+                    
+                    const codeMirrorHolder = document.createElement('div');
+                    codeMirrorHolder.className = 'chat-code-block';  // Changed class name
+                    
+                    block.parentNode.parentNode.replaceChild(codeMirrorHolder, block.parentNode);
+                    codeMirrorHolder.appendChild(textarea);
+                    
+                    const cm = CodeMirror.fromTextArea(textarea, {
+                        mode: lang,
+                        theme: "monokai",
+                        lineNumbers: true,
+                        readOnly: true,
+                        viewportMargin: Infinity,
+                        lineWrapping: false,
+                        matchBrackets: true,
+                        indentUnit: 4,
+                        tabSize: 4,
+                    });
+                    
+                    setTimeout(() => {
+                        cm.refresh();
+                    }, 10);
+                });
+            }
+            
+            async function sendMessage() {
+                const message = chatInput.value.trim();
+                if (!message) return;
+                
+                // Add user message to chat
+                addMessage(message, true);
+                chatInput.value = '';
+                
+                try {
+                    const response = await fetch('/strategies/chat/', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: new URLSearchParams({
+                            'message_history': JSON.stringify(messageHistory),
+                            'code': editor.getValue()
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    if (data.success) {
+                        addMessage(data.response);
+                    } else {
+                        addMessage('Error: ' + data.error);
+                    }
+                } catch (error) {
+                    addMessage('Error: Failed to send message');
+                    console.error('Fetch error:', error);
+                }
+            }
+            
+            sendButton.addEventListener('click', sendMessage);
+            chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault(); // Prevent form submission
+                    sendMessage();
+                }
+            });
+        });
+    </script>
 {% endblock %}

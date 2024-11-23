@@ -6,6 +6,10 @@ register = template.Library()
 
 @register.filter
 def format_percentage(value):
+    if value == "":
+        return ""
+    if value is None:
+        return ""
     return f"{value:.2f}%"
 
 @register.filter

@@ -1,13 +1,54 @@
 # strategies/views.py
 
-from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
+from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView, View
 from django.urls import reverse_lazy
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib import messages
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.http import require_POST
 
 from backtesting.models import BacktestResult
 from .models import Strategy
 from .forms import StrategyForm
-from dashboard.models import BestPerformingAlgo
+
+import openai
+import os
+from dotenv import load_dotenv
+import json
+load_dotenv()
+
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+@csrf_protect
+@require_POST
+def chat_with_ai(request):
+    try:
+        messages = request.POST.get('message_history')
+        code = request.POST.get('code')
+
+        # Convert messages to a list of dictionaries
+        messages = json.loads(messages)
+
+        # Add the users code to the most recent user message
+        messages.append({"role": "system", "content": f"Here is the current trading strategy code:\n\n```python\n{code}\n```Only assist the user with the custom backtrader code - do not provide any other information pertaining to the main, or other parts of the code."})
+        
+        # Call OpenAI API
+        response = openai.chat.completions.create(
+            model="gpt-4o",  # or your preferred model
+            messages=messages,
+            temperature=0.7,
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'response': response.choices[0].message.content
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
 
 class StrategyListView(LoginRequiredMixin, ListView):
     model = Strategy
@@ -29,13 +70,15 @@ class StrategyDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
         context = super().get_context_data(**kwargs)
         context['backtests'] = BacktestResult.objects.filter(strategy=self.object).order_by('-created_at')
 
-        best_sharpe_ratio = BacktestResult.objects.filter(strategy=self.object).order_by('-algo_sharpe_ratio').first()
-        best_win_rate = BacktestResult.objects.filter(strategy=self.object).order_by('-algo_win_rate').first()
-        best_return = BacktestResult.objects.filter(strategy=self.object).order_by('-algo_return').first()
+        best_backtest = BacktestResult.objects.filter(strategy=self.object).order_by('-algo_sharpe_ratio').first()
 
-        context['best_sharpe_ratio'] = best_sharpe_ratio.algo_sharpe_ratio
-        context['best_win_rate'] = best_win_rate.algo_win_rate
-        context['best_return'] = best_return.algo_return
+        best_sharpe_ratio = best_backtest.algo_sharpe_ratio if best_backtest else None
+        best_win_rate = best_backtest.algo_win_rate if best_backtest else None
+        best_return = best_backtest.algo_return if best_backtest else None
+
+        context['best_sharpe_ratio'] = best_sharpe_ratio
+        context['best_win_rate'] = best_win_rate
+        context['best_return'] = best_return
 
         return context
 
