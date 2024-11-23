@@ -1,0 +1,120 @@
+<!-- templates/base.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Arbitrex</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+    <!-- Navigation Bar -->
+    <nav class="bg-white shadow">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+          <div class="flex">
+            <a class="flex-shrink-0 flex items-center text-xl font-bold text-indigo-600" href="{% url 'dashboard' %}">
+              Arbitrex
+            </a>
+            <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+              {% if user.is_authenticated %}
+                <a href="{% url 'strategy_list' %}" class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-gray-700 hover:border-indigo-500 hover:text-gray-900">
+                  Strategies
+                </a>
+                <a href="{% url 'backtesting:dashboard' %}" class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-gray-700 hover:border-indigo-500 hover:text-gray-900">
+                  Backtest
+                </a>
+                <a href="{% url 'logout' %}" class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-gray-700 hover:border-indigo-500 hover:text-gray-900">
+                  Logout
+                </a>
+              {% else %}
+                <a href="{% url 'login' %}" class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-gray-700 hover:border-indigo-500 hover:text-gray-900">
+                  Login
+                </a>
+                <a href="{% url 'register' %}" class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-gray-700 hover:border-indigo-500 hover:text-gray-900">
+                  Register
+                </a>
+              {% endif %}
+            </div>
+          </div>
+          <!-- Mobile menu button -->
+          <div class="-mr-2 flex items-center sm:hidden">
+            <button type="button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500" aria-controls="mobile-menu" aria-expanded="false">
+              <span class="sr-only">Open main menu</span>
+              <!-- Icon when menu is closed -->
+              <svg class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+              <!-- Icon when menu is open -->
+              <svg class="hidden h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mobile Menu -->
+      <div class="sm:hidden" id="mobile-menu">
+        <div class="pt-2 pb-3 space-y-1">
+          {% if user.is_authenticated %}
+            <a href="{% url 'strategy_list' %}" class="block pl-3 pr-4 py-2 border-l-4 border-indigo-500 bg-indigo-50 text-indigo-700 text-base font-medium">
+              Strategies
+            </a>
+            <a href="{% url 'backtesting:dashboard' %}" class="block pl-3 pr-4 py-2 border-l-4 border-transparent text-gray-600 hover:border-indigo-500 hover:bg-indigo-50 hover:text-indigo-700 text-base font-medium">
+              Backtest
+            </a>
+            <a href="{% url 'logout' %}" class="block pl-3 pr-4 py-2 border-l-4 border-transparent text-gray-600 hover:border-indigo-500 hover:bg-indigo-50 hover:text-indigo-700 text-base font-medium">
+              Logout
+            </a>
+          {% else %}
+            <a href="{% url 'login' %}" class="block pl-3 pr-4 py-2 border-l-4 border-transparent text-gray-600 hover:border-indigo-500 hover:bg-indigo-50 hover:text-indigo-700 text-base font-medium">
+              Login
+            </a>
+            <a href="{% url 'register' %}" class="block pl-3 pr-4 py-2 border-l-4 border-transparent text-gray-600 hover:border-indigo-500 hover:bg-indigo-50 hover:text-indigo-700 text-base font-medium">
+              Register
+            </a>
+          {% endif %}
+        </div>
+      </div>
+    </nav>
+
+    <!-- Messages -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+      {% if messages %}
+        {% for message in messages %}
+          <div class="mb-4">
+            <div class="bg-{{ message.tags }}-100 border border-{{ message.tags }}-400 text-{{ message.tags }}-700 px-4 py-3 rounded relative" role="alert">
+              <span class="block sm:inline">{{ message }}</span>
+              <span class="absolute top-0 bottom-0 right-0 px-4 py-3">
+                <svg class="fill-current h-6 w-6 text-{{ message.tags }}-700" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                  <title>Close</title>
+                  <path d="M14.348 5.652a.5.5 0 00-.707 0L10 9.293 6.36 5.652a.5.5 0 10-.707.707L9.293 10l-3.64 3.64a.5.5 0 00.707.707L10 10.707l3.64 3.64a.5.5 0 00.707-.707L10.707 10l3.64-3.64a.5.5 0 000-.708z"/>
+                </svg>
+              </span>
+            </div>
+          </div>
+        {% endfor %}
+      {% endif %}
+    </div>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white shadow mt-8">
+      <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
+        <p class="text-center text-gray-500 text-sm">
+          &copy; {{ year }} Arbitrex. All rights reserved.
+        </p>
+      </div>
+    </footer>
+
+    <!-- Tailwind JS (Optional for interactivity) -->
+    {% block scripts %}{% endblock %}
+</body>
+</html>

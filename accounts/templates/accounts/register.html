@@ -1,0 +1,78 @@
+<!-- accounts/templates/accounts/register.html -->
+
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+  <div class="mt-12 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-[350px] space-y-8">
+      <div>
+        <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">Create a new account</h2>
+        <p class="mt-2 text-center text-sm text-gray-600">
+          Or
+          <a href="{% url 'login' %}" class="font-medium text-indigo-600 hover:text-indigo-500">log in to your existing account</a>
+        </p>
+      </div>
+      <form class="mt-8 space-y-6 bg-white p-8 rounded-lg shadow-md" method="POST" novalidate>
+        {% csrf_token %}
+        <div class="rounded-md shadow-sm -space-y-px">
+          <!-- Email Address Field -->
+          <div class="mb-4">
+            <label for="id_email" class="block text-sm font-medium text-gray-700">Email address</label>
+            <div class="mt-1">
+              <input id="id_email" name="email" type="email" autocomplete="email" required
+                class="appearance-none block w-full px-3 py-2 border {% if form.email.errors %}border-red-500{% else %}border-gray-300{% endif %} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                value="{{ form.email.value|default_if_none:'' }}">
+            </div>
+            {% if form.email.errors %}
+              <p class="mt-2 text-sm text-red-600">{{ form.email.errors }}</p>
+            {% endif %}
+          </div>
+
+          <!-- Password Field -->
+          <div class="mb-4">
+            <label for="id_password" class="block text-sm font-medium text-gray-700">Password</label>
+            <div class="mt-1">
+              <input id="id_password1" name="password1" type="password" autocomplete="new-password" required
+                class="appearance-none block w-full px-3 py-2 border {% if form.password1.errors %}border-red-500{% else %}border-gray-300{% endif %} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            </div>
+            {% if form.password.errors %}
+              <p class="mt-2 text-sm text-red-600">{{ form.password.errors }}</p>
+            {% endif %}
+          </div>
+
+          <!-- Confirm Password Field -->
+          <div class="mb-4">
+            <label for="id_password2" class="block text-sm font-medium text-gray-700">Confirm Password</label>
+            <div class="mt-1">
+              <input id="id_password2" name="password2" type="password" autocomplete="new-password" required
+                class="appearance-none block w-full px-3 py-2 border {% if form.password2.errors %}border-red-500{% else %}border-gray-300{% endif %} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            </div>
+            {% if form.password2.errors %}
+              <p class="mt-2 text-sm text-red-600">{{ form.password2.errors }}</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Messages -->
+        {% if messages %}
+          <div class="mb-4">
+            {% for message in messages %}
+              <div class="text-sm {% if message.tags == 'error' %}text-red-600{% elif message.tags == 'success' %}text-green-600{% else %}text-gray-600{% endif %}">
+                {{ message }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <!-- Submit Button -->
+        <div>
+          <button type="submit"
+            class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            Register
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,112 @@
+<!-- dashboard/templates/dashboard/dashboard.html -->
+
+{% extends "base.html" %}
+{% load static %}
+{% load stat_filters %}
+
+{% block content %}
+  <div class="w-[850px] mx-auto px-4 sm:px-6 lg:px-8 mt-8">
+    <h2 class="text-3xl font-bold text-gray-900 mb-6">Dashboard</h2>
+    <hr class="mb-6">
+
+    <!-- Stat Cards Row -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+      <!-- Best Performances Stat Card -->
+      <div class="bg-white shadow rounded-lg py-5">
+        <div class="flex items-center px-5">
+          <div class="w-0 flex-1 overflow-hidden overflow-ellipsis">
+            <dl>
+              <dt class="text-sm font-medium text-gray-500 truncate">Top Strategy</dt>
+              <div class="items-baseline flex space-x-2 mt-1">
+                <dd class="text-3xl font-semibold text-gray-900">{{ best_performances.algo_sharpe_ratio|format_number }}</dd>
+                <span class="text-sm text-gray-500">Sharpe Ratio</span>
+              </div>
+            </dl>
+          </div>
+        </div>
+        <div class="flex items-center border-t border-gray-200 pt-2 -mb-3 px-5 mt-2 justify-end">
+          <a href="{% url 'strategy_detail' best_performances.strategy.id %}" class="text-indigo-600 hover:text-indigo-900 inline-flex items-center px-3 py-1 text-sm leading-4 font-medium rounded-md transition">View </a>
+        </div>
+      </div>
+      
+      <!-- Add more stat cards here if needed -->
+      
+    </div>
+
+    <h3 class="text-2xl font-semibold text-gray-800 mb-4">Your Backtests</h3>
+    
+    {% if backtests %}
+      <div class="bg-white shadow rounded-lg overflow-x-auto w-full max-h-[400px] overflow-y-scroll">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50 sticky top-0 z-10">
+            <tr>
+              <th class="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
+                ID
+              </th>
+              <th class="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
+                Strategy
+              </th>
+              <th class="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
+                Status
+              </th>
+              <th class="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
+                SR
+              </th>
+              <th class="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
+                Created At
+              </th>
+              <th class="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            {% for backtest in backtests %}
+              <tr class="hover:bg-gray-50 transition">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {{ backtest.id }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                  {{ backtest.strategy.name }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  {% if backtest.status == "Completed" %}
+                    <span class="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
+                      {{ backtest.status }}
+                    </span>
+                  {% elif backtest.status == "Pending" %}
+                    <span class="inline-flex items-center px-3 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded-full">
+                      {{ backtest.status }}
+                    </span>
+                  {% else %}
+                    <span class="inline-flex items-center px-3 py-1 bg-red-100 text-red-800 text-xs font-semibold rounded-full">
+                      {{ backtest.status }}
+                    </span>
+                  {% endif %}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                  {{ backtest.algo_sharpe_ratio|format_number }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                  {{ backtest.created_at|date:"Y-m-d H:i" }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <a href="{% url 'backtesting:backtest_result' backtest.id %}" class="text-indigo-600 hover:text-indigo-900 inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm bg-indigo-500 text-white hover:bg-indigo-600 transition">
+                    View
+                  </a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
+        <p class="text-gray-700">You have no backtests.</p>
+        <a href="{% url 'strategy_list' %}" class="ml-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition">
+          Create a Strategy
+        </a>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}

@@ -1,0 +1,44 @@
+<!-- strategies/templates/strategies/strategy_form.html -->
+
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="w-[800px] mx-auto bg-white p-8 mt-8 rounded shadow">
+    <h2 class="text-2xl font-bold mb-6 text-gray-800">
+        {% if form.instance.pk %}Update{% else %}Create{% endif %} Strategy
+    </h2>
+    <form method="POST" class="space-y-6">
+        {% csrf_token %}
+        {% for field in form %}
+            <div>
+                <label for="{{ field.id_for_label }}" class="block text-gray-700 font-medium mb-2">
+                    {{ field.label }}
+                </label>
+                {% if field.name == "code" %}
+                    <textarea 
+                        id="{{ field.id_for_label }}" 
+                        name="{{ field.name }}" 
+                        class="mt-1 block w-full bg-gray-50 border border-gray-300 rounded-md shadow-sm 
+                               focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 
+                               font-mono p-3 overflow-x-scroll whitespace-pre"
+                        rows="10"
+                        placeholder="{{ field.field.widget.attrs.placeholder }}"
+                    >{{ field.value }}</textarea>
+                {% else %}
+                    {{ field }}
+                {% endif %}
+                {% if field.help_text %}
+                    <p class="text-gray-500 text-sm mt-1">{{ field.help_text }}</p>
+                {% endif %}
+                {% if field.errors %}
+                    <p class="text-red-500 text-sm mt-1">{{ field.errors }}</p>
+                {% endif %}
+            </div>
+        {% endfor %}
+        <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            {% if form.instance.pk %}Update{% else %}Create{% endif %}
+        </button>
+    </form>
+</div>
+{% endblock %}

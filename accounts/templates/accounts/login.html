@@ -1,0 +1,61 @@
+<!-- accounts/templates/accounts/login.html -->
+
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+  <div class="mt-12 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-[350px] space-y-8">
+      <div>
+        <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">Log in to your account</h2>
+        <p class="mt-2 text-center text-sm text-gray-600">
+          Or
+          <a href="{% url 'register' %}" class="font-medium text-indigo-600 hover:text-indigo-500">register for a new account</a>
+        </p>
+      </div>
+      <form class="mt-8 space-y-6 bg-white p-8 rounded-lg shadow-md" method="POST" novalidate>
+        {% csrf_token %}
+        <div class="rounded-md shadow-sm -space-y-px">
+          <!-- Email Address Field -->
+          <div class="mb-4">
+            <label for="id_username" class="block text-sm font-medium text-gray-700">Email address</label>
+            <div class="mt-1">
+              <input id="id_username" name="username" type="email" autocomplete="email" required
+                class="appearance-none block w-full px-3 py-2 border {% if form.username.errors %}border-red-500{% else %}border-gray-300{% endif %} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                value="{{ form.username.value|default_if_none:'' }}">
+            </div>
+            {% if form.username.errors %}
+              <p class="mt-2 text-sm text-red-600">{{ form.username.errors }}</p>
+            {% endif %}
+          </div>
+
+          <!-- Password Field -->
+          <div class="mb-4">
+            <label for="id_password" class="block text-sm font-medium text-gray-700">Password</label>
+            <div class="mt-1">
+              <input id="id_password" name="password" type="password" autocomplete="current-password" required
+                class="appearance-none block w-full px-3 py-2 border {% if form.password.errors %}border-red-500{% else %}border-gray-300{% endif %} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            </div>
+            {% if form.password.errors %}
+              <p class="mt-2 text-sm text-red-600">{{ form.password.errors }}</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div>
+          <button type="submit"
+            class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            Log In
+          </button>
+        </div>
+
+        <!-- Forgot Password Link 
+        <div class="text-sm text-center">
+          <a href="{% url 'password_reset' %}" class="font-medium text-indigo-600 hover:text-indigo-500">Forgot your password?</a>
+        </div>
+        -->
+      </form>
+    </div>
+  </div>
+{% endblock %}
