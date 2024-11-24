@@ -1,16 +1,20 @@
 # backtesting/tasks.py
 
+import matplotlib
+# Force Agg backend before importing anything else matplotlib-related
+matplotlib.use('module://backend_interagg')
+
+# Disable interactive mode right after matplotlib import
+import matplotlib.pyplot as plt
+
 from celery import shared_task
 from django.core.files.base import ContentFile
-
 from .binance_ocl import get_btc_ohlc_history
 from .models import BacktestResult
 from dashboard.models import BestPerformingAlgo
 from io import BytesIO
 import pandas as pd
 import backtrader as bt
-import matplotlib.pyplot as plt
-
 import datetime
 
 def get_historical_data(timeframe, start_date=None, end_date=None):
@@ -101,7 +105,10 @@ def get_historical_data(timeframe, start_date=None, end_date=None):
 @shared_task
 def run_backtest(backtest_id):
     print(f"Running backtest {backtest_id}")
-
+    
+    # Create a new figure at the start and ensure it's non-interactive
+    plt.switch_backend('Agg')
+    
     backtest = BacktestResult.objects.get(id=backtest_id)
     backtest.status = 'RUNNING'
     backtest.save()
@@ -183,6 +190,24 @@ def run_backtest(backtest_id):
         won_trades = trade_analyzer.won.total if 'won' in trade_analyzer and trade_analyzer.won.total else 0
         win_rate = (won_trades / total_trades) * 100 if total_trades > 0 else 0.0
 
+        # Handle case with no trades
+        if total_trades == 0:
+            print("No trades were made during the backtest.")
+            sharpe_ratio = 0.0
+            win_rate = 0.0
+            performance_summary = "No trades were executed in this backtest."
+        else:
+            performance_summary = (
+                f"Performance Summary\n"
+                f"===================\n"
+                f"Initial Portfolio Value: ${initial_cash:,.2f}\n"
+                f"Final Portfolio Value:   ${cerebro.broker.getvalue():.2f}\n"
+                f"Profit/Loss:             ${cerebro.broker.getvalue() - initial_cash:.2f}\n"
+                f"Return:                  {((cerebro.broker.getvalue() - initial_cash) / initial_cash) * 100:.2f}%\n"
+                f"Sharpe Ratio:            {sharpe_ratio:.2f}\n"
+                f"Win Rate:                {win_rate:.2f}%"
+            )
+
         # Print final portfolio value
         final_value = cerebro.broker.getvalue()
         print(f'Final Portfolio Value: {final_value:.2f}')
@@ -190,51 +215,71 @@ def run_backtest(backtest_id):
         print(f'Sharpe Ratio: {sharpe_ratio:.2f}')
         print(f'Win Rate: {win_rate:.2f}%')
 
-        # Generate plots
-        figs = cerebro.plot(style='candlestick')
+        # Generate plots with interactive mode explicitly disabled
+        figs = cerebro.plot(style='candlestick', iplot=False)
         
-        # Backtrader returns a list of figures, we'll save the first one
-        fig = figs[0][0]
-        
-        # Save the figure to bytes
-        buf = BytesIO()
-        fig.savefig(buf, format='png', bbox_inches='tight')
-        buf.seek(0)
-        image_file = ContentFile(buf.getvalue(), f'backtest_{backtest.id}.png')
-        backtest.result_file.save(f'backtest_{backtest.id}.png', image_file, save=False)
-        
-        # Close the figure to free memory
-        plt.close(fig)
+        # Handle the figure saving with explicit non-interactive settings
+        if figs and len(figs) > 0 and len(figs[0]) > 0:
+            fig = figs[0][0]
+            
+            # Save the figure with tight layout and high DPI
+            buf = BytesIO()
+            fig.savefig(buf, 
+                       format='png',
+                       bbox_inches='tight',
+                       dpi=300,
+                       backend='Agg')
+            
+            # Clean up
+            plt.close(fig)
+            plt.close('all')
+            
+            # Save the image
+            buf.seek(0)
+            image_file = ContentFile(buf.getvalue(), f'backtest_{backtest.id}.png')
+            backtest.result_file.save(f'backtest_{backtest.id}.png', image_file, save=False)
+            
+            # Explicitly close the buffer
+            buf.close()
 
         # Update backtest result
         backtest.status = 'COMPLETED'
         backtest.completed_at = datetime.datetime.utcnow()
         backtest.parameters = {}  # Populate if you have parameters
-        return_string = (
-            f"Performance Summary\n"
-            f"===================\n"
-            f"Initial Portfolio Value: ${initial_cash:,.2f}\n"
-            f"Final Portfolio Value:   ${final_value:,.2f}\n"
-            f"Profit/Loss:             ${final_value - initial_cash:,.2f}\n"
-            f"Return:                  {((final_value - initial_cash) / initial_cash) * 100:.2f}%\n"
-            f"Sharpe Ratio:            {sharpe_ratio:.2f}\n"
-            f"Win Rate:                {win_rate:.2f}%"
-        )
-        backtest.log = return_string
+        backtest.log = performance_summary
 
-        # Save calculated metrics
-        backtest.algo_return = ((final_value - initial_cash) / initial_cash) * 100  # Percentage return
-        backtest.algo_sharpe_ratio = sharpe_ratio
-        backtest.algo_win_rate = win_rate
+        if total_trades == 0:
+            # Save default metrics when no trades are made
+            backtest.algo_return = 0.0
+            backtest.algo_sharpe_ratio = 0.0
+            backtest.algo_win_rate = 0.0
+        else:
+            # Save calculated metrics
+            backtest.algo_return = ((final_value - initial_cash) / initial_cash) * 100  # Percentage return
+            backtest.algo_sharpe_ratio = sharpe_ratio
+            backtest.algo_win_rate = win_rate
+
         backtest.save()
+
+        if total_trades == 0:
+            print("Logged no-trade scenario in backtest results.")
 
         # Check if this is the best performing algo
         best_performance = BestPerformingAlgo.objects.order_by('-algo_sharpe_ratio').first()
         if best_performance is None or backtest.algo_sharpe_ratio > best_performance.algo_sharpe_ratio:
-            best_performance = BestPerformingAlgo.objects.create(strategy=backtest.strategy, backtest_result=backtest, algo_return=backtest.algo_return, algo_sharpe_ratio=backtest.algo_sharpe_ratio, algo_win_rate=backtest.algo_win_rate)
+            best_performance = BestPerformingAlgo.objects.create(
+                strategy=backtest.strategy,
+                backtest_result=backtest,
+                algo_return=backtest.algo_return,
+                algo_sharpe_ratio=backtest.algo_sharpe_ratio,
+                algo_win_rate=backtest.algo_win_rate
+            )
 
     except Exception as e:
         import traceback
         backtest.status = 'FAILED'
         backtest.log = f"{str(e)}\n{traceback.format_exc()}"
         backtest.save()
+    finally:
+        # Ensure we clean up any remaining figures
+        plt.close('all')

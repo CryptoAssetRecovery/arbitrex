@@ -151,12 +151,12 @@
                         </div>
                         <div class="border-t border-gray-200 p-4">
                             <div class="flex space-x-3">
-                                <input
-                                    type="text"
+                                <textarea
                                     placeholder="Type your message..."
-                                    class="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    class="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
                                     id="chat-input"
-                                />
+                                    rows="1"
+                                ></textarea>
                                 <button type="button" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500" id="send-message">
                                     Send
                                 </button>
@@ -360,13 +360,19 @@
                 }
             }
             
-            sendButton.addEventListener('click', sendMessage);
-            chatInput.addEventListener('keypress', (e) => {
+            // Update the event listener to handle Shift + Enter for new lines
+            chatInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
-                    e.preventDefault(); // Prevent form submission
+                    if (e.shiftKey) {
+                        // Allow default behavior (new line)
+                        return;
+                    }
+                    e.preventDefault(); // Prevent default Enter behavior
                     sendMessage();
                 }
             });
+            
+            sendButton.addEventListener('click', sendMessage);
         });
     </script>
 {% endblock %}

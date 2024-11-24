@@ -30,18 +30,31 @@ def chat_with_ai(request):
         # Convert messages to a list of dictionaries
         messages = json.loads(messages)
 
+        # Get a copy of the backtesting logic in tasks.py
+        with open('backtesting/tasks.py', 'r') as file:
+            backtesting_code = file.read()
+
         # Add the users code to the most recent user message
-        messages.append({"role": "user", "content": f"Here is the current trading strategy code:\n\n```python\n{code}\n```Only assist the user with the custom backtrader code - do not provide any other information pertaining to the main, or other parts of the code."})
-        
+        system_messages = [{"role": "system", "content": f"Here is the current trading strategy code:\n\n```python\n{code}\n```Only assist the user with the custom backtrader code - do not provide any other information pertaining to the main, or other parts of the code."}]
+        system_messages.append({"role": "system", "content": f"Here is the current backtesting code. The user **cannot** modify the backtesting code. Make sure that the strategy code is compatible with the backtesting code:\n\n```python\n{backtesting_code}\n```"})
+
+        # Add the system messages to the list
+        messages = system_messages + messages
+
         # Call OpenAI API
         response = openai.chat.completions.create(
-            model="o1-mini", 
+            model="gpt-4o", 
             messages=messages,
         )
+
+        # Remove the system messages from the response
+        response_content = response.choices[0].message.content
+        for system_message in system_messages:
+            response_content = response_content.replace(system_message["content"], "")
         
         return JsonResponse({
             'success': True,
-            'response': response.choices[0].message.content
+            'response': response_content
         })
     except Exception as e:
         return JsonResponse({
