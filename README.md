@@ -12,3 +12,9 @@ python manage.py runserver
 ```bash
 celery -A arbitrex worker --loglevel=info
 ```
+
+## Setting up the .env file
+
+```bash
+cp .env.example .env
+```
