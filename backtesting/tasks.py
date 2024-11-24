@@ -1,90 +1,100 @@
 # backtesting/tasks.py
 
-import os
-import datetime
 from celery import shared_task
-from django.conf import settings
+from django.core.files.base import ContentFile
+
+from .binance_ocl import get_btc_ohlc_history
 from .models import BacktestResult
-from strategies.models import Strategy
+from dashboard.models import BestPerformingAlgo
+from io import BytesIO
+import pandas as pd
 import backtrader as bt
 import matplotlib.pyplot as plt
-from io import BytesIO
-from django.core.files.base import ContentFile
-import numpy as np
 
-import yfinance as yf
-import pandas as pd
+import datetime
 
-def get_historical_data():
-    # Calculate dates within Yahoo Finance's limitations
-    end_date = datetime.datetime.now()
-    start_date = end_date - datetime.timedelta(days=700)
+def get_historical_data(timeframe, start_date=None, end_date=None):
+    # Map backtesting timeframes to Binance intervals
+    timeframe_mapping = {
+        '5m': '5m',
+        '15m': '15m',
+        '30m': '30m',
+        '1h': '1h',
+        '4h': '4h',
+        '1d': '1d'
+    }
     
-    print(f"Fetching data from {start_date} to {end_date}")
+    if timeframe not in timeframe_mapping:
+        raise ValueError(f"Invalid timeframe: {timeframe}")
+        
+    # Convert dates to datetime objects if they're date objects
+    if isinstance(start_date, datetime.date) and not isinstance(start_date, datetime.datetime):
+        start_date = datetime.datetime.combine(start_date, datetime.time.min)
+    if isinstance(end_date, datetime.date) and not isinstance(end_date, datetime.datetime):
+        end_date = datetime.datetime.combine(end_date, datetime.time.max)
     
-    # Download historical data for BTC-USD with 1h intervals
-    data = yf.download('BTC-USD', 
-                      start=start_date, 
-                      end=end_date,
-                      interval='1h')
-
-    # Debug: Print original columns
-    print("Original Columns:", data.columns)
-
-    # Check if columns are MultiIndex
-    if isinstance(data.columns, pd.MultiIndex):
-        # Extract the first level of the MultiIndex
-        data.columns = data.columns.get_level_values(0)
-        print("Flattened Columns:", data.columns)
-    else:
-        print("Columns are already single-level.")
-
-    data.reset_index(inplace=True)
+    # Convert string dates to datetime if they're strings
+    if isinstance(end_date, str):
+        end_date = datetime.datetime.strptime(end_date, '%Y-%m-%d')
+    if isinstance(start_date, str):
+        start_date = datetime.datetime.strptime(start_date, '%Y-%m-%d')
     
-    # Rename 'Datetime' to 'Date' if needed
-    if 'Datetime' in data.columns:
-        data.rename(columns={'Datetime': 'Date'}, inplace=True)
+    if end_date is None:
+        end_date = datetime.datetime.now()
+    if start_date is None:
+        if timeframe == '1d':
+            start_date = end_date - datetime.timedelta(days=700)
+        elif timeframe in ['5m', '15m', '30m']:
+            start_date = end_date - datetime.timedelta(days=100)
+        else:
+            start_date = end_date - datetime.timedelta(days=30)
+    
+    # Ensure dates are timezone-naive datetime objects
+    if hasattr(start_date, 'tzinfo') and start_date.tzinfo is not None:
+        start_date = start_date.replace(tzinfo=None)
+    if hasattr(end_date, 'tzinfo') and end_date.tzinfo is not None:
+        end_date = end_date.replace(tzinfo=None)
 
-    # Set index and resample
-    data.set_index('Date', inplace=True)
-    data = data.resample('4H').agg({
-        'Open': 'first',
-        'High': 'max',
-        'Low': 'min',
-        'Close': 'last',
-        'Volume': 'sum',
-        'Adj Close': 'last'
+    # Get data from Binance
+    data = get_btc_ohlc_history(
+        interval=timeframe_mapping[timeframe],
+        start_date=start_date,
+        end_date=end_date
+    )
+    
+    if data is None:
+        raise ValueError("No data returned from Binance")
+    
+    # Rename columns to match expected format
+    data = data.rename(columns={
+        'time': 'Date',
+        'volume': 'Volume'
     })
-    data.reset_index(inplace=True)
-
-    # Rename 'Adj Close' to 'Adj_Close'
-    data.rename(columns={'Adj Close': 'Adj_Close'}, inplace=True)
-    print("Renamed Columns:", data.columns)
-
+    
+    # Add Adj_Close column (in crypto it's the same as Close)
+    data['Adj_Close'] = data['close']
+    
+    # Select and reorder columns to match expected format
+    data = data[['Date', 'open', 'high', 'low', 'close', 'Volume', 'Adj_Close']]
+    
+    # Rename remaining columns to match expected format
+    data = data.rename(columns={
+        'open': 'Open',
+        'high': 'High',
+        'low': 'Low',
+        'close': 'Close'
+    })
+    
+    # Set index to Date
+    data.set_index('Date', inplace=True)
+    
     # Handle timezone if present
-    if pd.api.types.is_datetime64_any_dtype(data['Date']):
-        data['Date'] = pd.to_datetime(data['Date']).dt.tz_localize(None)
-
-    # Check for missing values and handle them
-    if data.isnull().values.any():
-        print("Data contains missing values. Filling missing data.")
-        data.fillna(method='ffill', inplace=True)
-        data.fillna(method='bfill', inplace=True)  # In case forward fill doesn't work
-
-    # Define required columns
-    required_columns = ['Date', 'Open', 'High', 'Low', 'Close', 'Volume', 'Adj_Close']
-
-    # Verify that all required columns are present
-    missing_columns = [col for col in required_columns if col not in data.columns]
-    if missing_columns:
-        raise KeyError(f"Missing columns in data: {missing_columns}")
-
-    # Select only the necessary columns
-    data = data[required_columns]
-
-    # Debug: Print first few rows to verify
-    print("Data Sample:\n", data.head())
-
+    if pd.api.types.is_datetime64_any_dtype(data.index):
+        data.index = pd.to_datetime(data.index).tz_localize(None)
+    
+    # Reset index to match expected format
+    data.reset_index(inplace=True)
+    
     return data
 
 
@@ -97,7 +107,13 @@ def run_backtest(backtest_id):
     backtest.save()
 
     try:
-        data = get_historical_data()
+        timeframe = backtest.timeframe
+        start_date = backtest.start_date
+        end_date = backtest.end_date
+
+        commission = backtest.commission
+
+        data = get_historical_data(timeframe, start_date, end_date)
         print("Data Columns after processing:", data.columns)
 
         # Dynamically create a Strategy class from user code
@@ -119,8 +135,11 @@ def run_backtest(backtest_id):
         # Add strategy with logging enabled
         cerebro.addstrategy(UserStrategy)
         
-        # Set commission - using a more realistic crypto commission
-        cerebro.broker.setcommission(commission=0.001)  # 0.1% commission
+        # Set commission - using a percentage commission
+        cerebro.broker.setcommission(
+            commission=(commission / 100),
+            commtype=bt.CommInfoBase.COMM_PERC  # Specify commission type as percentage
+        )
         
         # Set cash
         initial_cash = 10000
@@ -208,6 +227,11 @@ def run_backtest(backtest_id):
         backtest.algo_sharpe_ratio = sharpe_ratio
         backtest.algo_win_rate = win_rate
         backtest.save()
+
+        # Check if this is the best performing algo
+        best_performance = BestPerformingAlgo.objects.order_by('-algo_sharpe_ratio').first()
+        if best_performance is None or backtest.algo_sharpe_ratio > best_performance.algo_sharpe_ratio:
+            best_performance = BestPerformingAlgo.objects.create(strategy=backtest.strategy, backtest_result=backtest, algo_return=backtest.algo_return, algo_sharpe_ratio=backtest.algo_sharpe_ratio, algo_win_rate=backtest.algo_win_rate)
 
     except Exception as e:
         import traceback

@@ -40,10 +40,10 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "backtesting",
-    "dashboard",
     "data",
     "strategies",
     "widget_tweaks",
+    'dashboard.apps.DashboardConfig',
 ]
 
 MIDDLEWARE = [

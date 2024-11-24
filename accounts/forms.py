@@ -23,8 +23,6 @@ class AuthenticationForm(forms.Form):
     
     def clean(self):
         cleaned_data = super().clean()
-        print('authentication form clean')
-        print(cleaned_data)
         email = cleaned_data.get('email')
         password = cleaned_data.get('password')
         if email and password:

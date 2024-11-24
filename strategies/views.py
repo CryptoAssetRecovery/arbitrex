@@ -31,13 +31,12 @@ def chat_with_ai(request):
         messages = json.loads(messages)
 
         # Add the users code to the most recent user message
-        messages.append({"role": "system", "content": f"Here is the current trading strategy code:\n\n```python\n{code}\n```Only assist the user with the custom backtrader code - do not provide any other information pertaining to the main, or other parts of the code."})
+        messages.append({"role": "user", "content": f"Here is the current trading strategy code:\n\n```python\n{code}\n```Only assist the user with the custom backtrader code - do not provide any other information pertaining to the main, or other parts of the code."})
         
         # Call OpenAI API
         response = openai.chat.completions.create(
-            model="gpt-4o",  # or your preferred model
+            model="o1-mini", 
             messages=messages,
-            temperature=0.7,
         )
         
         return JsonResponse({

@@ -12,28 +12,47 @@
     <!-- Stat Cards Row -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
       <!-- Best Performances Stat Card -->
-      <div class="bg-white shadow rounded-lg py-5">
-        <div class="flex items-center px-5">
-          <div class="w-0 flex-1 overflow-hidden overflow-ellipsis">
-            <dl>
-              <dt class="text-sm font-medium text-gray-500 truncate">Top Strategy</dt>
-              <div class="items-baseline flex space-x-2 mt-1">
-                <dd class="text-3xl font-semibold text-gray-900">{{ best_performances.algo_sharpe_ratio|format_number }}</dd>
-                <span class="text-sm text-gray-500">Sharpe Ratio</span>
-              </div>
-            </dl>
+      {% if best_performances and best_performances.strategy %}
+        <div class="bg-white shadow rounded-lg py-5">
+          <div class="flex items-center px-5">
+            <div class="w-0 flex-1 overflow-hidden overflow-ellipsis">
+              <dl>
+                <dt class="text-sm font-medium text-gray-500 truncate">Top Strategy</dt>
+                <div class="items-baseline flex space-x-2 mt-1">
+                  <dd class="text-3xl font-semibold text-gray-900">{{ best_performances.algo_sharpe_ratio|format_number }}</dd>
+                  <span class="text-sm text-gray-500">Sharpe Ratio</span>
+                </div>
+              </dl>
+            </div>
+          </div>
+          <div class="flex items-center border-t border-gray-200 pt-2 -mb-3 px-5 mt-2 justify-end">
+            <a href="{% url 'strategy_detail' best_performances.strategy.id %}" class="text-indigo-600 hover:text-indigo-900 inline-flex items-center px-3 py-1 text-sm leading-4 font-medium rounded-md transition">View</a>
           </div>
         </div>
-        <div class="flex items-center border-t border-gray-200 pt-2 -mb-3 px-5 mt-2 justify-end">
-          <a href="{% url 'strategy_detail' best_performances.strategy.id %}" class="text-indigo-600 hover:text-indigo-900 inline-flex items-center px-3 py-1 text-sm leading-4 font-medium rounded-md transition">View </a>
+      {% else %}
+        <div class="bg-white shadow rounded-lg py-5">
+          <div class="flex items-center px-5">
+            <div class="w-0 flex-1 overflow-hidden overflow-ellipsis">
+              <dl>
+                <dt class="text-sm font-medium text-gray-500 truncate">Top Strategy</dt>
+                <div class="items-baseline flex space-x-2 mt-1">
+                  <dd class="text-3xl font-semibold text-gray-900">N/A</dd>
+                  <span class="text-sm text-gray-500">Sharpe Ratio</span>
+                </div>
+              </dl>
+            </div>
+          </div>
+          <div class="flex items-center border-t border-gray-200 pt-2 -mb-3 px-5 mt-2 justify-end">
+            <span class="text-gray-500 text-sm">No strategies available.</span>
+          </div>
         </div>
-      </div>
+      {% endif %}
       
       <!-- Add more stat cards here if needed -->
       
     </div>
 
-    <h3 class="text-2xl font-semibold text-gray-800 mb-4">Your Backtests</h3>
+    <h3 class="text-2xl font-semibold text-gray-800 mb-4">Recent Backtests</h3>
     
     {% if backtests %}
       <div class="bg-white shadow rounded-lg overflow-x-auto w-full max-h-[400px] overflow-y-scroll">
@@ -69,20 +88,20 @@
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                   {{ backtest.strategy.name }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  {% if backtest.status == "Completed" %}
-                    <span class="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
-                      {{ backtest.status }}
-                    </span>
-                  {% elif backtest.status == "Pending" %}
-                    <span class="inline-flex items-center px-3 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded-full">
-                      {{ backtest.status }}
-                    </span>
+                <td class="px-6 py-4 whitespace-nowrap text-sm 
+                  {% if backtest.status == "COMPLETE" %}
+                    bg-green-100 text-green-800
+                  {% elif backtest.status == "PENDING" %}
+                    bg-yellow-100 text-yellow-800
+                  {% elif backtest.status == "RUNNING" %}
+                    bg-blue-100 text-blue-800
+                  {% elif backtest.status == "FAILED" %}
+                    bg-red-100 text-red-800
                   {% else %}
-                    <span class="inline-flex items-center px-3 py-1 bg-red-100 text-red-800 text-xs font-semibold rounded-full">
-                      {{ backtest.status }}
-                    </span>
+                    bg-gray-100 text-gray-800
                   {% endif %}
+                ">
+                  {{ backtest.status }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                   {{ backtest.algo_sharpe_ratio|format_number }}
@@ -91,7 +110,7 @@
                   {{ backtest.created_at|date:"Y-m-d H:i" }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <a href="{% url 'backtesting:backtest_result' backtest.id %}" class="text-indigo-600 hover:text-indigo-900 inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm bg-indigo-500 text-white hover:bg-indigo-600 transition">
+                  <a href="{% url 'backtesting:backtest_result' backtest.id %}" class="text-indigo-600 inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm bg-indigo-500 text-white hover:bg-indigo-600 transition">
                     View
                   </a>
                 </td>

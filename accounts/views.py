@@ -3,15 +3,28 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth import authenticate, login as auth_login, logout
+from django.http import JsonResponse
 
 from .forms import CustomUserCreationForm, AuthenticationForm
+
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 def register(request):
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
+            email = form.cleaned_data.get('email').lower().strip()
+            whitelist = os.getenv('EMAIL_WHITELIST', '')
+            allowed_emails = [e.lower().strip() for e in whitelist.split(',') if e.strip()]
+            
+            if email not in allowed_emails:
+                messages.error(request, 'You are not authorized to register.')
+                return redirect('register')
+            
             form.save()
-            email = form.cleaned_data.get('email')
             messages.success(request, f'Account created for {email}! You can now log in.')
             return redirect('login')
     else:
@@ -32,8 +45,7 @@ def login_view(request):
             else:
                 messages.error(request, 'Invalid email or password.')
         else:
-            print('form is not valid')
-            print(form.errors)
+            messages.error(request, 'Invalid email or password.')
     else:
         form = AuthenticationForm()
     return render(request, 'accounts/login.html', {'form': form})

@@ -18,6 +18,7 @@
     <nav class="bg-white shadow">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
+          <!-- Left Side: Brand and Navigation Links -->
           <div class="flex">
             <a class="flex-shrink-0 flex items-center text-xl font-bold text-indigo-600" href="{% url 'dashboard' %}">
               Arbitrex
@@ -30,9 +31,6 @@
                 <a href="{% url 'backtesting:dashboard' %}" class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-gray-700 hover:border-indigo-500 hover:text-gray-900">
                   Backtest
                 </a>
-                <a href="{% url 'logout' %}" class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-gray-700 hover:border-indigo-500 hover:text-gray-900">
-                  Logout
-                </a>
               {% else %}
                 <a href="{% url 'login' %}" class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-gray-700 hover:border-indigo-500 hover:text-gray-900">
                   Login
@@ -43,6 +41,16 @@
               {% endif %}
             </div>
           </div>
+          
+          <!-- Right Side: Logout Button -->
+          {% if user.is_authenticated %}
+            <div class="hidden sm:flex sm:items-center">
+              <a href="{% url 'logout' %}" class="h-full inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-gray-700 hover:border-indigo-500 hover:text-gray-900">
+                Logout
+              </a>
+            </div>
+          {% endif %}
+          
           <!-- Mobile menu button -->
           <div class="-mr-2 flex items-center sm:hidden">
             <button type="button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500" aria-controls="mobile-menu" aria-expanded="false">
@@ -86,18 +94,33 @@
     </nav>
 
     <!-- Messages -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+    <div class="absolute top-8 right-8 w-full max-w-sm z-50">
       {% if messages %}
         {% for message in messages %}
-          <div class="mb-4">
-            <div class="bg-{{ message.tags }}-100 border border-{{ message.tags }}-400 text-{{ message.tags }}-700 px-4 py-3 rounded relative" role="alert">
-              <span class="block sm:inline">{{ message }}</span>
-              <span class="absolute top-0 bottom-0 right-0 px-4 py-3">
-                <svg class="fill-current h-6 w-6 text-{{ message.tags }}-700" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                  <title>Close</title>
-                  <path d="M14.348 5.652a.5.5 0 00-.707 0L10 9.293 6.36 5.652a.5.5 0 10-.707.707L9.293 10l-3.64 3.64a.5.5 0 00.707.707L10 10.707l3.64 3.64a.5.5 0 00.707-.707L10.707 10l3.64-3.64a.5.5 0 000-.708z"/>
+          <div class="mb-4 message">
+            <div class="bg-white w-full border rounded-lg shadow-sm p-4 relative flex items-center justify-between" role="alert">
+              <div class="flex items-center gap-3">
+                {% if message.tags == 'success' %}
+                  <svg class="h-5 w-5 text-green-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+                  </svg>
+                {% elif message.tags == 'error' %}
+                  <svg class="h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+                  </svg>
+                {% else %}
+                  <svg class="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-10a1 1 0 10-2 0v4a1 1 0 102 0V8zm-1-1.5a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+                  </svg>
+                {% endif %}
+                <span class="text-sm font-medium text-gray-900">{{ message }}</span>
+              </div>
+              <button class="text-gray-400 hover:text-gray-500 focus:outline-none close-message">
+                <span class="sr-only">Close</span>
+                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
                 </svg>
-              </span>
+              </button>
             </div>
           </div>
         {% endfor %}
@@ -119,6 +142,26 @@
     </footer>
 
     <!-- Tailwind JS (Optional for interactivity) -->
-    {% block scripts %}{% endblock %}
+    {% block scripts %}
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        // Select all close buttons
+        const closeButtons = document.querySelectorAll('.close-message');
+
+        // Iterate over each button and attach a click event listener
+        closeButtons.forEach(button => {
+          button.addEventListener('click', function() {
+            // Find the closest parent with the 'message' class
+            const message = this.closest('.message');
+            
+            // If found, remove it from the DOM
+            if (message) {
+              message.remove();
+            }
+          });
+        });
+      });
+    </script>
+    {% endblock %}
 </body>
 </html>

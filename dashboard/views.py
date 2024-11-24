@@ -12,5 +12,5 @@ class DashboardView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['backtests'] = BacktestResult.objects.filter(user=self.request.user).order_by('-created_at')
-        context['best_performances'] = BestPerformingAlgo.objects.order_by('-created_at').first()
+        context['best_performances'] = BestPerformingAlgo.objects.order_by('-algo_sharpe_ratio').first()
         return context

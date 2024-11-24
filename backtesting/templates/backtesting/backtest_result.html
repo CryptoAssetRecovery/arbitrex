@@ -3,37 +3,162 @@
 {% extends "base.html" %}
 {% load static %}
 
+{% block head %}
+    {{ block.super }}
+    <!-- CodeMirror CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/monokai.min.css">
+    <!-- Optional: Remove custom CSS to rely solely on Tailwind -->
+{% endblock %}
+
 {% block content %}
-  <div class="max-w-4xl mx-auto bg-white p-8 mt-8 rounded shadow">
-    <h2 class="text-2xl font-bold text-gray-800 mb-4">Backtest Result: {{ backtest.id }}</h2>
-    <p class="text-gray-700 mb-4">
-      Status: <span class="font-semibold">{{ backtest.status }}</span>
-    </p>
+  <div class="w-[1000px] mx-auto p-8 mt-8">
+    <!-- Header Section -->
+    {% if backtest.status == 'COMPLETED' %}
+    <div class="flex justify-between items-center mb-8">
+      <h2 class="text-3xl font-bold text-gray-800 overflow-hidden text-ellipsis whitespace-nowrap flex-1 mr-4">
+        Backtest Result: {{ backtest.id }}
+      </h2>
+      <div class="flex space-x-3 flex-shrink-0">
+        <!-- Status Section -->
+        <div>
+          <span class="
+            px-3 py-1 rounded-full text-sm font-semibold 
+            {% if backtest.status == 'COMPLETED' %}
+              bg-green-100 text-green-800
+            {% elif backtest.status == 'FAILED' %}
+              bg-red-100 text-red-800
+            {% elif backtest.status == 'RUNNING' %}
+              bg-blue-100 text-blue-800
+            {% else %}
+              bg-yellow-100 text-yellow-800
+            {% endif %}
+          ">
+            {{ backtest.status }}
+          </span>
+        </div>
+      </div>
+    </div>
+    {% endif %}
 
     {% if backtest.status == 'COMPLETED' %}
-      <h4 class="text-xl font-semibold text-gray-800 mb-2">Performance Metrics:</h4>
-      <pre class="bg-gray-100 p-4 rounded-md overflow-auto font-mono text-sm text-gray-800 mb-4">
-{{ backtest.log }}
-      </pre>
+      <!-- Stat Cards Section -->
+      <div class="mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <!-- Sharpe Ratio Card -->
+          <div class="bg-white shadow rounded-lg p-6">
+            <div>
+              <p class="text-sm text-gray-500">Sharpe Ratio</p>
+              <p class="text-xl font-semibold text-gray-800">{{ backtest.algo_sharpe_ratio|floatformat:2 }}</p>
+            </div>
+          </div>
+          <!-- Win Rate Card -->
+          <div class="bg-white shadow rounded-lg p-6">
+            <div>
+              <p class="text-sm text-gray-500">Win Rate</p>
+              <p class="text-xl font-semibold text-gray-800">{{ backtest.algo_win_rate|floatformat:2 }}%</p>
+            </div>
+          </div>
+          <!-- Total Profit Card -->
+          <div class="bg-white shadow rounded-lg p-6">
+            <div>
+              <p class="text-sm text-gray-500">Total Profit</p>
+              <p class="text-xl font-semibold text-gray-800">{{ backtest.algo_return|floatformat:2 }}%</p>
+            </div>
+          </div>
+        </div>
 
-      <h4 class="text-xl font-semibold text-gray-800 mb-2">Result Plot:</h4>
-      {% if backtest.result_file %}
-        <img src="{{ backtest.result_file.url }}" alt="Backtest Plot" class="w-full h-auto rounded shadow">
-      {% else %}
-        <p class="text-gray-700">No plot available.</p>
-      {% endif %}
+        <!-- New row for trading parameters -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Commission Card -->
+          <div class="bg-white shadow rounded-lg p-6">
+            <div>
+              <p class="text-sm text-gray-500">Commission</p>
+              {% if backtest.commission %}
+                <p class="text-xl font-semibold text-gray-800">{{ backtest.commission|floatformat:3 }}%</p>
+              {% else %}
+                <p class="text-xl font-semibold text-gray-800">N/A</p>
+              {% endif %}
+            </div>
+          </div>
+          <!-- Slippage Card -->
+          <div class="bg-white shadow rounded-lg p-6">
+            <div>
+              <p class="text-sm text-gray-500">Slippage</p>
+              {% if backtest.slippage %}
+                <p class="text-xl font-semibold text-gray-800">{{ backtest.slippage|floatformat:3 }}%</p>
+              {% else %}
+                <p class="text-xl font-semibold text-gray-800">N/A</p>
+              {% endif %}
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Result Plot -->
+      <div class="mb-8 bg-white shadow rounded-lg p-6">
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">Result Plot</h3>
+        {% if backtest.result_file %}
+          <img src="{{ backtest.result_file.url }}" alt="Backtest Plot" class="w-full h-auto rounded">
+        {% else %}
+          <p class="text-gray-700">No plot available.</p>
+        {% endif %}
+      </div>
+
+      <!-- Strategy Code -->
+      <div class="mb-8 bg-white shadow rounded-lg p-6">
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">Strategy Code</h3>
+        <!-- CodeMirror Editor -->
+         <div class="-mx-6 -mb-6">
+          <textarea id="strategy-code-editor" class="hidden">
+{{ backtest.strategy_code }}
+          </textarea>
+         </div>
+
+      </div>
 
     {% elif backtest.status == 'FAILED' %}
-      <h4 class="text-xl font-semibold text-gray-800 mb-2">Error Log:</h4>
-      <pre class="bg-gray-100 p-4 rounded-md overflow-auto font-mono text-sm text-gray-800 mb-4">
-{{ backtest.log }}
-      </pre>
+      <!-- Error Log -->
+      <div class="mb-8 bg-white shadow rounded-lg p-6">
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">Error Log</h3>
+        <pre class="bg-gray-100 p-4 rounded overflow-x-auto">{{ backtest.log }}</pre>
+      </div>
 
     {% elif backtest.status == 'RUNNING' %}
-      <p class="text-gray-700">Your backtest is currently running. Please refresh this page later.</p>
+      <div class="mb-8 bg-white shadow rounded-lg p-6">
+        <p class="text-gray-700">Your backtest is currently running. Please refresh this page later.</p>
+      </div>
 
     {% else %}
-      <p class="text-gray-700">Your backtest is pending and will start shortly.</p>
+      <div class="mb-8 bg-white shadow rounded-lg p-6">
+        <p class="text-gray-700">Your backtest is pending and will start shortly.</p>
+      </div>
     {% endif %}
   </div>
+{% endblock %}
+
+{% block scripts %}
+    {{ block.super }}
+    <!-- CodeMirror JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/python/python.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const textarea = document.getElementById("strategy-code-editor");
+            const editor = CodeMirror.fromTextArea(textarea, {
+                mode: "python",
+                theme: "monokai",
+                lineNumbers: true,
+                readOnly: true,
+                indentUnit: 4,
+                tabSize: 4,
+                lineWrapping: true,
+            });
+            editor.setSize("100%", "500px");
+            
+            // Add rounded corners to the CodeMirror element
+            editor.getWrapperElement().classList.add('rounded-b-lg');
+        });
+    </script>
 {% endblock %}

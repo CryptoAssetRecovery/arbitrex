@@ -19,11 +19,41 @@ class BacktestResult(models.Model):
     completed_at = models.DateTimeField(blank=True, null=True)
     result_file = models.FileField(upload_to='backtest_results/', blank=True, null=True)
     log = models.TextField(blank=True, null=True)
-    parameters = models.JSONField(default=dict, blank=True)
+    parameters = models.JSONField(default=dict, blank=True, null=True)
+
+    timeframe = models.CharField(
+        max_length=3,
+        choices=[
+            ('1h', '1 Hour'),
+            ('4h', '4 Hours'),
+            ('1d', '1 Day'),
+        ],
+        default='4h'
+    )
+
+    start_date = models.DateField(blank=True, null=True)
+    end_date = models.DateField(blank=True, null=True)
+
+    commission = models.FloatField(blank=True, null=True)
+    slippage = models.FloatField(blank=True, null=True)
+    leverage = models.FloatField(blank=True, null=True)
     
     algo_return = models.FloatField(blank=True, null=True)
     algo_win_rate = models.FloatField(blank=True, null=True)
     algo_sharpe_ratio = models.FloatField(blank=True, null=True)
 
+    # Snapshot fields
+    strategy_name = models.CharField(max_length=100)
+    strategy_description = models.TextField(blank=True, null=True)
+    strategy_code = models.TextField()
+
     def __str__(self):
-        return f"Backtest {self.id} - {self.strategy.name} - {self.status}"
+        return f"Backtest {self.id} - {self.strategy_name} - {self.status}"
+
+    def save(self, *args, **kwargs):
+        if not self.strategy_name or not self.strategy_code:
+            self.strategy_name = self.strategy.name
+            self.strategy_description = self.strategy.description
+            self.strategy_code = self.strategy.code
+                
+        super().save(*args, **kwargs)
