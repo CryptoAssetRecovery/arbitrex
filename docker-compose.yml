@@ -1,0 +1,29 @@
+services:
+  web:
+    build: .
+    command: gunicorn arbitrex.wsgi:application --bind 0.0.0.0:8000
+    volumes:
+      - .:/app
+      - ./db.sqlite3:/app/db.sqlite3
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      - redis
+
+  celery:
+    build: .
+    command: celery -A arbitrex worker --loglevel=info
+    volumes:
+      - .:/app
+      - ./db.sqlite3:/app/db.sqlite3
+    env_file:
+      - .env
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:6-alpine
+    ports:
+      - "6379:6379"
