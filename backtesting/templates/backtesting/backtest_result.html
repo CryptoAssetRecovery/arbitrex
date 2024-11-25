@@ -12,6 +12,7 @@
 {% endblock %}
 
 {% block content %}
+  <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
   <div class="w-[1000px] mx-auto p-8 mt-8">
     <!-- Header Section -->
     {% if backtest.status == 'COMPLETED' %}
@@ -99,11 +100,61 @@
       <!-- Result Plot -->
       <div class="mb-8 bg-white shadow rounded-lg p-6">
         <h3 class="text-xl font-semibold text-gray-800 mb-4">Result Plot</h3>
-        {% if backtest.result_file %}
-          <img src="{{ backtest.result_file.url }}" alt="Backtest Plot" class="w-full h-auto rounded">
-        {% else %}
-          <p class="text-gray-700">No plot available.</p>
-        {% endif %}
+        <p class="text-gray-500 text-sm mb-4 -mt-2">This chart shows the price data and the trades taken during the backtest.</p>
+        <div id="chart-container" style="width: 100%; height: 400px;"></div>
+        <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+        <script>
+            document.addEventListener("DOMContentLoaded", function () {
+                const chartContainer = document.getElementById('chart-container');
+
+                // Initialize the Lightweight Chart
+                const chart = LightweightCharts.createChart(chartContainer, {
+                    width: chartContainer.clientWidth,
+                    height: 400,
+                    layout: {
+                        backgroundColor: '#ffffff',
+                        textColor: '#000000',
+                    },
+                    grid: {
+                        vertLines: {
+                            color: '#e1e1e1',
+                        },
+                        horzLines: {
+                            color: '#e1e1e1',
+                        },
+                    },
+                    timeScale: {
+                        borderColor: '#cccccc',
+                    },
+                });
+
+                // Add candlestick series
+                const candleSeries = chart.addCandlestickSeries();
+
+                // Fetch price and trade data from the API
+                fetch("{% url 'backtesting:backtest_chart_data' backtest.id %}")
+                    .then((response) => response.json())
+                    .then((data) => {
+                        console.log("Fetched Chart Data:", data);
+
+                        // Set price (OCL) data
+                        candleSeries.setData(data.priceData);
+
+                        // Add trade markers
+                        const markers = data.tradeData.map(trade => ({
+                            time: trade.time,
+                            position: 'aboveBar',
+                            color: trade.type === 'buy' ? '#4caf50' : '#ff5722', // Green for buy, red for sell
+                            shape: trade.type === 'buy' ? 'arrowUp' : 'arrowDown',
+                            text: `${trade.type.toUpperCase()} @ ${trade.price}`,
+                        }));
+                        candleSeries.setMarkers(markers);
+                    })
+                    .catch((error) => {
+                        console.error("Error fetching chart data:", error);
+                    });
+            });
+        </script>
       </div>
 
       <!-- Strategy Code -->
@@ -126,8 +177,8 @@
       </div>
 
     {% elif backtest.status == 'RUNNING' %}
-      <div class="mb-8 bg-white shadow rounded-lg p-6">
-        <p class="text-gray-700">Your backtest is currently running. Please refresh this page later.</p>
+      <div class="mb-8 bg-white shadow rounded-lg p-6" id="backtest-status">
+        <p class="text-gray-700">Your backtest is currently running. Please wait...</p>
       </div>
 
     {% else %}
@@ -160,5 +211,36 @@
             // Add rounded corners to the CodeMirror element
             editor.getWrapperElement().classList.add('rounded-b-lg');
         });
+
+        // Polling Mechanism
+        {% if backtest.status == 'PENDING' or backtest.status == 'RUNNING' %}
+        document.addEventListener("DOMContentLoaded", function() {
+            const backtestId = "{{ backtest.id }}";
+            const statusContainer = document.getElementById("backtest-status");
+
+            const checkStatus = () => {
+                fetch("{% url 'backtesting:backtest_status' backtest.id %}")
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log("Backtest Status:", data.status);
+                        if (data.status === 'COMPLETED' || data.status === 'FAILED') {
+                            // Reload the page to show updated status and results
+                            window.location.reload();
+                        } else {
+                            // Update status text if needed
+                            if (statusContainer) {
+                                statusContainer.querySelector("p").textContent = "Your backtest is currently running. Please wait...";
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Error fetching backtest status:", error);
+                    });
+            };
+
+            // Check status every 5 seconds
+            setInterval(checkStatus, 5000);
+        });
+        {% endif %}
     </script>
 {% endblock %}

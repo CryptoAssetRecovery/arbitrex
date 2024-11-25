@@ -47,6 +47,10 @@ class BacktestResult(models.Model):
     strategy_description = models.TextField(blank=True, null=True)
     strategy_code = models.TextField()
 
+    # Charting data
+    trade_data = models.JSONField(blank=True, null=True)
+    ocl_data = models.JSONField(blank=True, null=True)
+
     def __str__(self):
         return f"Backtest {self.id} - {self.strategy_name} - {self.status}"
 

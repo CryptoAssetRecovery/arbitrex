@@ -16,6 +16,8 @@ from io import BytesIO
 import pandas as pd
 import backtrader as bt
 import datetime
+import csv
+from pathlib import Path
 
 def get_historical_data(timeframe, start_date=None, end_date=None):
     # Map backtesting timeframes to Binance intervals
@@ -121,6 +123,7 @@ def run_backtest(backtest_id):
         commission = backtest.commission
 
         data = get_historical_data(timeframe, start_date, end_date)
+        ocl_data = data.to_dict(orient='records')
         print("Data Columns after processing:", data.columns)
 
         # Dynamically create a Strategy class from user code
@@ -158,6 +161,7 @@ def run_backtest(backtest_id):
         # Add analyzers for Sharpe Ratio and Trade Analysis
         cerebro.addanalyzer(bt.analyzers.SharpeRatio, _name='sharpe_ratio', timeframe=bt.TimeFrame.Days, compression=1)
         cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name='trade_analyzer')
+        cerebro.addanalyzer(bt.analyzers.Transactions, _name='transactions')
 
         # Configure the data feed for Backtrader
         data_feed = bt.feeds.PandasData(
@@ -180,6 +184,43 @@ def run_backtest(backtest_id):
         
         # Extract analyzers' results
         first_strategy = results[0]
+
+        # Save trade data
+        transactions = first_strategy.analyzers.transactions.get_analysis()
+
+        # Initialize an empty list to store formatted trade data
+        trade_data = []
+
+        # Iterate over each transaction date and its corresponding trades
+        for date, trades in transactions.items():
+            for trans in trades:
+                price = trans[1]  # Price is the second element
+                size = trans[4]   # Size is the fifth element
+                trade_type = 'buy' if size > 0 else 'sell'
+
+                # Append each trade as a dictionary to the trade_data list
+                trade_data.append({
+                    "time": date.strftime('%Y-%m-%d %H:%M:%S'),
+                    "type": trade_type,
+                    "price": price,
+                    "size": abs(size)
+                })
+
+        # Save the formatted trade data to the backtest object
+        backtest.trade_data = trade_data
+
+        # Save the trade data
+        transactions = first_strategy.analyzers.transactions.get_analysis()
+        
+        # Convert datetime keys to strings in transactions
+        formatted_transactions = {
+            date.strftime('%Y-%m-%d %H:%M:%S'): trades 
+            for date, trades in transactions.items()
+        }
+
+        # Create trades directory if it doesn't exist
+        trades_dir = Path('media/trades')
+        trades_dir.mkdir(parents=True, exist_ok=True)
         
         # Sharpe Ratio
         sharpe_ratio = first_strategy.analyzers.sharpe_ratio.get_analysis().get('sharperatio', 0.0)
@@ -274,6 +315,28 @@ def run_backtest(backtest_id):
                 algo_sharpe_ratio=backtest.algo_sharpe_ratio,
                 algo_win_rate=backtest.algo_win_rate
             )
+        
+        # Convert data to records and ensure timestamps are converted to strings
+        ocl_data = data.copy()
+        ocl_data['Date'] = ocl_data['Date'].dt.strftime('%Y-%m-%d %H:%M:%S')
+        ocl_data = ocl_data.to_dict(orient='records')
+
+        # Save the trade data and ocl data
+        backtest.trade_data = trade_data
+        backtest.ocl_data = ocl_data
+
+        # Print the first row of each (updated to handle the formatted data)
+        if trade_data:
+            print(f"First trade entry: {trade_data[0]}")
+        else:
+            print("No trade data available.")
+
+        if ocl_data:
+            print(f"First row of ocl data: {ocl_data[0]}")
+        else:
+            print("No ocl data available.")
+
+        backtest.save()
 
     except Exception as e:
         import traceback

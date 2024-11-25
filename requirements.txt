@@ -12,3 +12,5 @@ python-dotenv==1.0.1
 gunicorn==23.0.0
 matplotlib==3.9.2
 django-redis
+whitenoise==6.8.2
+psycopg==3.2.3

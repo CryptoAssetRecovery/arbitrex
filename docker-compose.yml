@@ -1,29 +1,49 @@
+version: '3.8'
+
 services:
   web:
     build: .
-    command: gunicorn arbitrex.wsgi:application --bind 0.0.0.0:8000
+    command: gunicorn arbitrex.wsgi:application --bind 0.0.0.0:8000 --timeout 120
     volumes:
       - .:/app
-      - ./db.sqlite3:/app/db.sqlite3
+      - ./staticfiles:/app/staticfiles
     ports:
       - "8000:8000"
     env_file:
       - .env
     depends_on:
       - redis
+      - postgres
 
   celery:
     build: .
     command: celery -A arbitrex worker --loglevel=info
     volumes:
       - .:/app
-      - ./db.sqlite3:/app/db.sqlite3
     env_file:
       - .env
     depends_on:
       - redis
+      - postgres
 
   redis:
     image: redis:6-alpine
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  postgres:
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+
+volumes:
+  redis_data:
+  postgres_data:
