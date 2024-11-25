@@ -56,6 +56,8 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "arbitrex.urls"
 
+CSRF_TRUSTED_ORIGINS = ['https://arbitrex.co', 'https://www.arbitrex.co']
+
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
