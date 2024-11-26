@@ -289,17 +289,6 @@ def run_backtest(backtest_id):
         # Save the trade data and ocl data
         backtest.trade_data = trade_data
 
-        # # print the first row of each (updated to handle the formatted data)
-        if trade_data:
-            # print(f"First trade entry: {trade_data[0]}")
-        else:
-            # print("No trade data available.")
-
-        if ocl_data:
-            # print(f"First row of ocl data: {ocl_data[0]}")
-        else:
-            # print("No ocl data available.")
-
         backtest.save()
 
     except Exception as e:
