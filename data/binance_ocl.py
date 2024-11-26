@@ -3,10 +3,11 @@ import pandas as pd
 from datetime import datetime, timedelta
 import time
 
-def get_btc_ohlc_history(interval='1h', start_date=None, end_date=None):
+def get_binance_ohlc_history(asset='BTC', interval='1h', start_date=None, end_date=None):
     """
     Fetch historical BTC/USD OHLC data from Binance US
     
+    asset: Asset to fetch data for (optional)
     interval: Time interval - options:
         '1m', '3m', '5m', '15m', '30m'  # minutes
         '1h', '2h', '4h', '6h', '8h', '12h'  # hours
@@ -31,7 +32,7 @@ def get_btc_ohlc_history(interval='1h', start_date=None, end_date=None):
     
     while current_start < end_ts:
         params = {
-            'symbol': 'BTCUSDT',
+            'symbol': f'{asset}USDT',
             'interval': interval,
             'startTime': current_start,
             'endTime': end_ts,
@@ -49,7 +50,7 @@ def get_btc_ohlc_history(interval='1h', start_date=None, end_date=None):
             # Process timestamps for logging
             batch_start = datetime.fromtimestamp(data[0][0] / 1000)
             batch_end = datetime.fromtimestamp(data[-1][0] / 1000)
-            print(f"Fetched from {batch_start} to {batch_end}")
+            # print(f"Fetched from {batch_start} to {batch_end}")
             
             all_data.extend(data)
             
@@ -61,7 +62,7 @@ def get_btc_ohlc_history(interval='1h', start_date=None, end_date=None):
             time.sleep(0.5)
             
         except requests.exceptions.RequestException as e:
-            print(f"Error fetching data: {e}")
+            # print(f"Error fetching data: {e}")
             time.sleep(5)  # Wait longer on error
             continue
     
@@ -87,33 +88,9 @@ def get_btc_ohlc_history(interval='1h', start_date=None, end_date=None):
     df = df.drop(['close_time', 'ignore'], axis=1)
     df = df.rename(columns={'timestamp': 'time'})
     
-    print(f"\nFinal dataset:")
-    print(f"Start: {df['time'].min()}")
-    print(f"End: {df['time'].max()}")
-    print(f"Total periods: {len(df)}")
+    # print(f"\nFinal dataset:")
+    # print(f"Start: {df['time'].min()}")
+    # print(f"End: {df['time'].max()}")
+    # print(f"Total periods: {len(df)}")
     
     return df
-
-# Example usage
-if __name__ == "__main__":
-    # Get 2 years of hourly data
-    start_date = datetime.now() - timedelta(days=2153)
-    df = get_btc_ohlc_history(
-        interval='15m',
-        start_date=start_date
-    )
-    
-    if df is not None:
-        print("\nMost recent BTC/USD data:")
-        print(df.tail())
-        
-        # Basic statistics
-        print("\nBasic statistics for BTC/USD:")
-        print(df[['open', 'high', 'low', 'close']].describe())
-
-        # Example of available intervals
-        print("\nAvailable intervals:")
-        print("Minutes: '1m', '3m', '5m', '15m', '30m'")
-        print("Hours: '1h', '2h', '4h', '6h', '8h', '12h'")
-        print("Days/Weeks: '1d', '3d', '1w'")
-        print("Months: '1M'")

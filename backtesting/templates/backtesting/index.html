@@ -26,48 +26,15 @@
                 {% endif %}
             </div>
 
-            <!-- Timeframe Selection -->
+            <!-- Data Import Selection -->
             <div class="space-y-2">
-                <label for="{{ form.timeframe.id_for_label }}" class="block text-sm font-medium text-gray-700">
-                    Timeframe
+                <label for="{{ form.ocl_data_import.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                    Data Import
                 </label>
-                <div class="grid grid-cols-6 gap-3">
-                    {% for value, label in form.timeframe.field.choices %}
-                    <div>
-                        <input type="radio" name="timeframe" id="timeframe_{{ value }}" value="{{ value }}" 
-                               class="peer hidden" {% if form.timeframe.value == value %}checked{% endif %}>
-                        <label for="timeframe_{{ value }}" 
-                               class="flex items-center justify-center px-3 py-2 text-sm font-medium border rounded-md cursor-pointer
-                                      peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-600
-                                      border-gray-200 bg-white text-gray-900 hover:bg-gray-50">
-                            {{ label }}
-                        </label>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-
-            <!-- Date Range Selection -->
-            <div class="grid grid-cols-2 gap-4">
-                <div class="space-y-2">
-                    <label for="{{ form.start_date.id_for_label }}" class="block text-sm font-medium text-gray-700">
-                        Start Date
-                    </label>
-                    {{ form.start_date }}
-                    {% if form.start_date.errors %}
-                        <p class="text-sm text-red-600 mt-1">{{ form.start_date.errors }}</p>
-                    {% endif %}
-                </div>
-
-                <div class="space-y-2">
-                    <label for="{{ form.end_date.id_for_label }}" class="block text-sm font-medium text-gray-700">
-                        End Date
-                    </label>
-                    {{ form.end_date }}
-                    {% if form.end_date.errors %}
-                        <p class="text-sm text-red-600 mt-1">{{ form.end_date.errors }}</p>
-                    {% endif %}
-                </div>
+                {{ form.ocl_data_import }}
+                {% if form.ocl_data_import.errors %}
+                    <p class="text-sm text-red-600 mt-1">{{ form.ocl_data_import.errors }}</p>
+                {% endif %}
             </div>
 
             <!-- Advanced Settings -->
@@ -77,12 +44,18 @@
                         Commission (%)
                     </label>
                     {{ form.commission }}
+                    {% if form.commission.errors %}
+                        <p class="text-sm text-red-600 mt-1">{{ form.commission.errors }}</p>
+                    {% endif %}
                 </div>
                 <div class="space-y-2">
                     <label for="{{ form.slippage.id_for_label }}" class="block text-sm font-medium text-gray-700">
                         Slippage (%)
                     </label>
                     {{ form.slippage }}
+                    {% if form.slippage.errors %}
+                        <p class="text-sm text-red-600 mt-1">{{ form.slippage.errors }}</p>
+                    {% endif %}
                 </div>
             </div>
 

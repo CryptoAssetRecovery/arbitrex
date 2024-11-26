@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
+    <h2 class="text-3xl font-bold text-gray-900 mb-6">Import OCL Data</h2>
+    <hr class="mb-6 border-gray-200">
+    
+    <div class="bg-white shadow rounded-lg p-6">
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+            
+            <!-- Asset Selection -->
+            <div class="space-y-2">
+                <label for="{{ form.asset.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                    Asset
+                </label>
+                {{ form.asset|add_class:"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" }}
+                {% if form.asset.errors %}
+                    <p class="text-sm text-red-600 mt-1">{{ form.asset.errors }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Interval Selection -->
+            <div class="space-y-2">
+                <label for="{{ form.interval.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                    Interval
+                </label>
+                {{ form.interval|add_class:"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" }}
+                {% if form.interval.errors %}
+                    <p class="text-sm text-red-600 mt-1">{{ form.interval.errors }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Date Range Selection -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="space-y-2">
+                    <label for="{{ form.start_date.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                        Start Date
+                    </label>
+                    {{ form.start_date|add_class:"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" }}
+                    {% if form.start_date.errors %}
+                        <p class="text-sm text-red-600 mt-1">{{ form.start_date.errors }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="space-y-2">
+                    <label for="{{ form.end_date.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                        End Date
+                    </label>
+                    {{ form.end_date|add_class:"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" }}
+                    {% if form.end_date.errors %}
+                        <p class="text-sm text-red-600 mt-1">{{ form.end_date.errors }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="pt-4">
+                <button type="submit" class="w-full inline-flex justify-center items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition">
+                    Import Data
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

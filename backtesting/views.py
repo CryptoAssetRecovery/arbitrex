@@ -17,24 +17,18 @@ def dashboard(request):
         form = BacktestForm(request.POST)
         if form.is_valid():
             strategy = form.cleaned_data['strategy']
-            timeframe = form.cleaned_data['timeframe']
-            start_date = form.cleaned_data.get('start_date')
-            end_date = form.cleaned_data.get('end_date')
-            leverage = form.cleaned_data.get('leverage')
             commission = form.cleaned_data.get('commission')
             slippage = form.cleaned_data.get('slippage')
             parameters = form.cleaned_data.get('parameters') or {}
+            ocl_data_import = form.cleaned_data.get('ocl_data_import')
             backtest = BacktestResult.objects.create(
                 user=request.user,
                 strategy=strategy,
                 status='PENDING',
                 parameters=parameters,
-                timeframe=timeframe,
-                start_date=start_date,
-                end_date=end_date,
-                leverage=leverage,
                 commission=commission,
                 slippage=slippage,
+                ocl_data_import=ocl_data_import,
             )
             run_backtest.delay(backtest.id)
             return redirect('backtesting:backtest_result', backtest_id=backtest.id)
@@ -48,7 +42,10 @@ def dashboard(request):
 def backtest_chart_data(request, backtest_id):
     backtest = get_object_or_404(BacktestResult, id=backtest_id, user=request.user)
     trade_data = backtest.trade_data
-    ocl_data = backtest.ocl_data
+    ocl_data = backtest.ocl_data_import.get_price_data()
+
+    # Format the ocl_data
+    ocl_data = ocl_data.to_dict(orient='records')
 
     # Transform priceData
     price_data = []
@@ -86,8 +83,8 @@ def backtest_chart_data(request, backtest_id):
             "price": trade["price"],
         })
 
-    print("Trade Data:", trade_data_transformed[0])
-    print("Price Data:", price_data[0])
+    # print("Trade Data:", trade_data_transformed[0])
+    # print("Price Data:", price_data[0])
 
     return JsonResponse({
         "tradeData": trade_data_transformed,

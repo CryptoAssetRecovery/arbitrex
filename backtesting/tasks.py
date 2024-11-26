@@ -5,108 +5,77 @@ import matplotlib
 matplotlib.use('module://backend_interagg')
 
 # Disable interactive mode right after matplotlib import
-import matplotlib.pyplot as plt
 
 from celery import shared_task
 from django.core.files.base import ContentFile
-from .binance_ocl import get_btc_ohlc_history
+
 from .models import BacktestResult
 from dashboard.models import BestPerformingAlgo
+
+import matplotlib.pyplot as plt
 from io import BytesIO
 import pandas as pd
 import backtrader as bt
-import datetime
-import csv
 from pathlib import Path
 
-def get_historical_data(timeframe, start_date=None, end_date=None):
-    # Map backtesting timeframes to Binance intervals
-    timeframe_mapping = {
-        '5m': '5m',
-        '15m': '15m',
-        '30m': '30m',
-        '1h': '1h',
-        '4h': '4h',
-        '1d': '1d'
-    }
-    
-    if timeframe not in timeframe_mapping:
-        raise ValueError(f"Invalid timeframe: {timeframe}")
-        
-    # Convert dates to datetime objects if they're date objects
-    if isinstance(start_date, datetime.date) and not isinstance(start_date, datetime.datetime):
-        start_date = datetime.datetime.combine(start_date, datetime.time.min)
-    if isinstance(end_date, datetime.date) and not isinstance(end_date, datetime.datetime):
-        end_date = datetime.datetime.combine(end_date, datetime.time.max)
-    
-    # Convert string dates to datetime if they're strings
-    if isinstance(end_date, str):
-        end_date = datetime.datetime.strptime(end_date, '%Y-%m-%d')
-    if isinstance(start_date, str):
-        start_date = datetime.datetime.strptime(start_date, '%Y-%m-%d')
-    
-    if end_date is None:
-        end_date = datetime.datetime.now()
-    if start_date is None:
-        if timeframe == '1d':
-            start_date = end_date - datetime.timedelta(days=700)
-        elif timeframe in ['5m', '15m', '30m']:
-            start_date = end_date - datetime.timedelta(days=100)
-        else:
-            start_date = end_date - datetime.timedelta(days=30)
-    
-    # Ensure dates are timezone-naive datetime objects
-    if hasattr(start_date, 'tzinfo') and start_date.tzinfo is not None:
-        start_date = start_date.replace(tzinfo=None)
-    if hasattr(end_date, 'tzinfo') and end_date.tzinfo is not None:
-        end_date = end_date.replace(tzinfo=None)
+import datetime
+import csv
 
-    # Get data from Binance
-    data = get_btc_ohlc_history(
-        interval=timeframe_mapping[timeframe],
-        start_date=start_date,
-        end_date=end_date
-    )
+def get_ocl_historical_data(data_import_id):
+    """
+    Fetch historical data from OCLDataImport and format it to match get_historical_data output.
     
-    if data is None:
-        raise ValueError("No data returned from Binance")
+    Args:
+        data_import_id: ID of the OCLDataImport object
+        
+    Returns:
+        pandas.DataFrame with columns: ['Date', 'Open', 'High', 'Low', 'Close', 'Volume', 'Adj_Close']
+    """
+    from data.models import OCLDataImport, OCLPrice
     
-    # Rename columns to match expected format
-    data = data.rename(columns={
-        'time': 'Date',
-        'volume': 'Volume'
-    })
-    
-    # Add Adj_Close column (in crypto it's the same as Close)
-    data['Adj_Close'] = data['close']
-    
-    # Select and reorder columns to match expected format
-    data = data[['Date', 'open', 'high', 'low', 'close', 'Volume', 'Adj_Close']]
-    
-    # Rename remaining columns to match expected format
-    data = data.rename(columns={
-        'open': 'Open',
-        'high': 'High',
-        'low': 'Low',
-        'close': 'Close'
-    })
-    
-    # Set index to Date
-    data.set_index('Date', inplace=True)
-    
-    # Handle timezone if present
-    if pd.api.types.is_datetime64_any_dtype(data.index):
-        data.index = pd.to_datetime(data.index).tz_localize(None)
-    
-    # Reset index to match expected format
-    data.reset_index(inplace=True)
-    
-    return data
+    try:
+        # Get the data import object and its associated prices
+        data_import = OCLDataImport.objects.get(id=data_import_id)
+        prices = OCLPrice.objects.filter(
+            data_import=data_import
+        ).order_by('date').values(
+            'date', 'open', 'high', 'low', 'close', 'volume'
+        )
+        
+        if not prices:
+            raise ValueError(f"No price data found for import {data_import_id}")
+            
+        # Convert to DataFrame
+        df = pd.DataFrame(list(prices))
+        
+        # Rename columns to match expected format
+        df = df.rename(columns={
+            'date': 'Date',
+            'open': 'Open',
+            'high': 'High',
+            'low': 'Low',
+            'close': 'Close',
+            'volume': 'Volume'
+        })
+        
+        # Add Adj_Close column (in crypto it's the same as Close)
+        df['Adj_Close'] = df['Close']
+        
+        # Ensure columns are in the expected order
+        df = df[['Date', 'Open', 'High', 'Low', 'Close', 'Volume', 'Adj_Close']]
+        
+        # Handle timezone if present
+        if pd.api.types.is_datetime64_any_dtype(df['Date']):
+            df['Date'] = pd.to_datetime(df['Date']).dt.tz_localize(None)
+            
+        return df
+        
+    except OCLDataImport.DoesNotExist:
+        raise ValueError(f"Data import {data_import_id} not found")
 
 
 @shared_task
 def run_backtest(backtest_id):
-    print(f"Running backtest {backtest_id}")
     
     # Create a new figure at the start and ensure it's non-interactive
     plt.switch_backend('Agg')
@@ -116,15 +85,14 @@ def run_backtest(backtest_id):
     backtest.save()
 
     try:
-        timeframe = backtest.timeframe
-        start_date = backtest.start_date
-        end_date = backtest.end_date
-
         commission = backtest.commission
 
-        data = get_historical_data(timeframe, start_date, end_date)
+        if backtest.ocl_data_import:
+            data = get_ocl_historical_data(backtest.ocl_data_import.id)
+        else:
+            raise ValueError("No OCL data import ID found for this backtest.")
+        
         ocl_data = data.to_dict(orient='records')
-        print("Data Columns after processing:", data.columns)
 
         # Dynamically create a Strategy class from user code
         strategy_code = backtest.strategy.code
@@ -175,9 +143,6 @@ def run_backtest(backtest_id):
             openinterest=-1
         )
         cerebro.adddata(data_feed)
-
-        # Print initial portfolio value
-        print(f'Starting Portfolio Value: {cerebro.broker.getvalue():.2f}')
 
         # Run backtest with analyzers
         results = cerebro.run()
@@ -233,7 +198,7 @@ def run_backtest(backtest_id):
 
         # Handle case with no trades
         if total_trades == 0:
-            print("No trades were made during the backtest.")
+            # print("No trades were made during the backtest.")
             sharpe_ratio = 0.0
             win_rate = 0.0
             performance_summary = "No trades were executed in this backtest."
@@ -251,10 +216,10 @@ def run_backtest(backtest_id):
 
         # Print final portfolio value
         final_value = cerebro.broker.getvalue()
-        print(f'Final Portfolio Value: {final_value:.2f}')
-        print(f'Profit/Loss: {final_value - initial_cash:.2f}')
-        print(f'Sharpe Ratio: {sharpe_ratio:.2f}')
-        print(f'Win Rate: {win_rate:.2f}%')
+        # print(f'Final Portfolio Value: {final_value:.2f}')
+        # print(f'Profit/Loss: {final_value - initial_cash:.2f}')
+        # print(f'Sharpe Ratio: {sharpe_ratio:.2f}')
+        # print(f'Win Rate: {win_rate:.2f}%')
 
         # Generate plots with interactive mode explicitly disabled
         figs = cerebro.plot(style='candlestick', iplot=False)
@@ -303,7 +268,7 @@ def run_backtest(backtest_id):
         backtest.save()
 
         if total_trades == 0:
-            print("Logged no-trade scenario in backtest results.")
+            # print("Logged no-trade scenario in backtest results.")
 
         # Check if this is the best performing algo
         best_performance = BestPerformingAlgo.objects.order_by('-algo_sharpe_ratio').first()
@@ -323,18 +288,17 @@ def run_backtest(backtest_id):
 
         # Save the trade data and ocl data
         backtest.trade_data = trade_data
-        backtest.ocl_data = ocl_data
 
-        # Print the first row of each (updated to handle the formatted data)
+        # # print the first row of each (updated to handle the formatted data)
         if trade_data:
-            print(f"First trade entry: {trade_data[0]}")
+            # print(f"First trade entry: {trade_data[0]}")
         else:
-            print("No trade data available.")
+            # print("No trade data available.")
 
         if ocl_data:
-            print(f"First row of ocl data: {ocl_data[0]}")
+            # print(f"First row of ocl data: {ocl_data[0]}")
         else:
-            print("No ocl data available.")
+            # print("No ocl data available.")
 
         backtest.save()
 

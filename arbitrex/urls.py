@@ -10,6 +10,7 @@ urlpatterns = [
     path('accounts/', include('accounts.urls')),
     path('strategies/', include('strategies.urls')),
     path('backtesting/', include('backtesting.urls')),
+    path('data/', include('data.urls')),
     path("", include("dashboard.urls")),
 ]
 
