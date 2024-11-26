@@ -17,7 +17,7 @@
     <!-- Header Section -->
     <div class="flex justify-between items-center mb-8">
       <h2 class="text-3xl font-bold text-gray-800 overflow-hidden text-ellipsis whitespace-nowrap flex-1 mr-4">
-        Name: {{ strategy.name }}
+        {{ strategy.name }}
       </h2>
       <div class="flex space-x-3 flex-shrink-0">
         <a href="{% url 'strategy_update' strategy.pk %}" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
@@ -70,6 +70,7 @@
           <thead class="bg-gray-50">
             <tr>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">OCL Data</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Win Rate</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sharpe Ratio</th>
@@ -81,6 +82,9 @@
             {% for backtest in backtests %}
               <tr>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ backtest.id }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                  {{ backtest.ocl_data_import }}
+                </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm 
                   {% if backtest.status == "COMPLETE" %}
                     bg-green-100 text-green-800

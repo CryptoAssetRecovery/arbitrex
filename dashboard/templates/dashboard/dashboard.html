@@ -12,44 +12,79 @@
     <!-- Stat Cards Row -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
       <!-- Best Performances Stat Card -->
-      {% if best_performances and best_performances.strategy %}
-        <div class="bg-white shadow rounded-lg py-5">
-          <div class="flex items-center px-5">
-            <div class="w-0 flex-1 overflow-hidden overflow-ellipsis">
-              <dl>
-                <dt class="text-sm font-medium text-gray-500 truncate">Top Strategy</dt>
-                <div class="items-baseline flex space-x-2 mt-1">
-                  <dd class="text-3xl font-semibold text-gray-900">{{ best_performances.algo_sharpe_ratio|format_number }}</dd>
-                  <span class="text-sm text-gray-500">Sharpe Ratio</span>
-                </div>
-              </dl>
-            </div>
-          </div>
-          <div class="flex items-center border-t border-gray-200 pt-2 -mb-3 px-5 mt-2 justify-end">
-            <a href="{% url 'strategy_detail' best_performances.strategy.id %}" class="text-indigo-600 hover:text-indigo-900 inline-flex items-center px-3 py-1 text-sm leading-4 font-medium rounded-md transition">View</a>
-          </div>
-        </div>
-      {% else %}
-        <div class="bg-white shadow rounded-lg py-5">
-          <div class="flex items-center px-5">
-            <div class="w-0 flex-1 overflow-hidden overflow-ellipsis">
-              <dl>
-                <dt class="text-sm font-medium text-gray-500 truncate">Top Strategy</dt>
-                <div class="items-baseline flex space-x-2 mt-1">
+      <div class="bg-white shadow rounded-lg py-5">
+        <div class="flex items-center px-5">
+          <div class="w-0 flex-1 overflow-hidden overflow-ellipsis">
+            <dl>
+              <dt class="text-sm font-medium text-gray-500 truncate">Top Sharpe Ratio</dt>
+              <div class="items-baseline flex space-x-2 mt-1">
+                {% if best_performance %}
+                  <dd class="text-3xl font-semibold text-gray-900">{{ best_performance.algo_sharpe_ratio|format_number }}</dd>
+                {% else %}
                   <dd class="text-3xl font-semibold text-gray-900">N/A</dd>
-                  <span class="text-sm text-gray-500">Sharpe Ratio</span>
-                </div>
-              </dl>
-            </div>
-          </div>
-          <div class="flex items-center border-t border-gray-200 pt-2 -mb-3 px-5 mt-2 justify-end">
-            <span class="text-gray-500 text-sm">No strategies available.</span>
+                {% endif %}
+                <span class="text-sm text-gray-500">Sharpe Ratio</span>
+              </div>
+            </dl>
           </div>
         </div>
-      {% endif %}
-      
-      <!-- Add more stat cards here if needed -->
-      
+        <div class="flex items-center border-t border-gray-200 pt-2 -mb-3 px-5 mt-2 justify-end">
+          {% if best_performance %}
+            <a href="{% url 'strategy_detail' best_performance.strategy.id %}" class="text-indigo-600 hover:text-indigo-900 inline-flex items-center px-3 py-1 text-sm leading-4 font-medium rounded-md transition">View</a>
+          {% else %}
+            <span class="text-gray-500 text-sm">No strategies available.</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="bg-white shadow rounded-lg py-5">
+        <div class="flex items-center px-5">
+          <div class="w-0 flex-1 overflow-hidden overflow-ellipsis">
+            <dl>
+              <dt class="text-sm font-medium text-gray-500 truncate">Top Win Rate</dt>
+              <div class="items-baseline flex space-x-2 mt-1">
+                {% if most_winning_algo %}
+                  <dd class="text-3xl font-semibold text-gray-900">{{ most_winning_algo.algo_win_rate|format_percentage }}</dd>
+                {% else %}
+                  <dd class="text-3xl font-semibold text-gray-900">N/A</dd>
+                {% endif %}
+                <span class="text-sm text-gray-500">Win Rate</span>
+              </div>
+            </dl>
+          </div>
+        </div>
+        <div class="flex items-center border-t border-gray-200 pt-2 -mb-3 px-5 mt-2 justify-end">
+          {% if most_winning_algo %}
+            <a href="{% url 'strategy_detail' most_winning_algo.strategy.id %}" class="text-indigo-600 hover:text-indigo-900 inline-flex items-center px-3 py-1 text-sm leading-4 font-medium rounded-md transition">View</a>
+          {% else %}
+            <span class="text-gray-500 text-sm">No strategies available.</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="bg-white shadow rounded-lg py-5">
+        <div class="flex items-center px-5">
+          <div class="w-0 flex-1 overflow-hidden overflow-ellipsis">
+            <dl>
+              <dt class="text-sm font-medium text-gray-500 truncate">Top Return</dt>
+              <div class="items-baseline flex space-x-2 mt-1">
+                {% if best_return_algo %}
+                  <dd class="text-3xl font-semibold text-gray-900">{{ best_return_algo.algo_return|format_percentage }}</dd>
+                {% else %}
+                  <dd class="text-3xl font-semibold text-gray-900">N/A</dd>
+                {% endif %}
+                <span class="text-sm text-gray-500">Return</span>
+              </div>
+            </dl>
+          </div>
+        </div>
+        <div class="flex items-center border-t border-gray-200 pt-2 -mb-3 px-5 mt-2 justify-end">
+          {% if best_return_algo %}
+            <a href="{% url 'strategy_detail' best_return_algo.strategy.id %}" class="text-indigo-600 hover:text-indigo-900 inline-flex items-center px-3 py-1 text-sm leading-4 font-medium rounded-md transition">View</a>
+          {% else %}
+            <span class="text-gray-500 text-sm">No strategies available.</span>
+          {% endif %}
+        </div>
+      </div>      
     </div>
 
     <h3 class="text-2xl font-semibold text-gray-800 mb-4">Recent Backtests</h3>

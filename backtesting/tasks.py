@@ -10,7 +10,7 @@ from celery import shared_task
 from django.core.files.base import ContentFile
 
 from .models import BacktestResult
-from dashboard.models import BestPerformingAlgo
+from dashboard.models import BestPerformingAlgo, MostWinningAlgo, BestReturnAlgo
 
 import matplotlib.pyplot as plt
 from io import BytesIO
@@ -276,6 +276,28 @@ def run_backtest(backtest_id):
                 algo_return=backtest.algo_return,
                 algo_sharpe_ratio=backtest.algo_sharpe_ratio,
                 algo_win_rate=backtest.algo_win_rate
+            )
+        
+        # Check if this is the best return algo
+        best_return = BestReturnAlgo.objects.order_by('-algo_return').first()
+        if best_return is None or backtest.algo_return > best_return.algo_return:
+            best_return = BestReturnAlgo.objects.create(
+                strategy=backtest.strategy,
+                backtest_result=backtest,
+                algo_return=backtest.algo_return,
+                algo_win_rate=backtest.algo_win_rate,
+                algo_sharpe_ratio=backtest.algo_sharpe_ratio
+            )
+
+        # Check if this is the most winning algo
+        most_winning = MostWinningAlgo.objects.order_by('-algo_win_rate').first()
+        if most_winning is None or backtest.algo_win_rate > most_winning.algo_win_rate:
+            most_winning = MostWinningAlgo.objects.create(
+                strategy=backtest.strategy,
+                backtest_result=backtest,
+                algo_return=backtest.algo_return,
+                algo_win_rate=backtest.algo_win_rate,
+                algo_sharpe_ratio=backtest.algo_sharpe_ratio
             )
         
         # Convert data to records and ensure timestamps are converted to strings

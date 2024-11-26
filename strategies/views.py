@@ -82,11 +82,16 @@ class StrategyDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
         context = super().get_context_data(**kwargs)
         context['backtests'] = BacktestResult.objects.filter(strategy=self.object).order_by('-created_at')
 
-        best_backtest = BacktestResult.objects.filter(strategy=self.object).order_by('-algo_sharpe_ratio').first()
+        best_backtest = BacktestResult.objects.filter(strategy=self.object, algo_sharpe_ratio__isnull=False).order_by('-algo_sharpe_ratio').first()
 
         best_sharpe_ratio = best_backtest.algo_sharpe_ratio if best_backtest else None
         best_win_rate = best_backtest.algo_win_rate if best_backtest else None
         best_return = best_backtest.algo_return if best_backtest else None
+
+        print(best_sharpe_ratio)
+        print(best_win_rate)
+        print(best_return)
+        print(best_backtest)
 
         context['best_sharpe_ratio'] = best_sharpe_ratio
         context['best_win_rate'] = best_win_rate

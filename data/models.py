@@ -21,6 +21,7 @@ class OCLDataImport(models.Model):
         ('completed', 'Completed'),
         ('failed', 'Failed'),
     ]
+    name = models.CharField(max_length=255, default='', null=True, blank=True)
     created_at = models.DateField(auto_now_add=True)
     asset = models.CharField(max_length=3, choices=ASSET_CHOICES)
     interval = models.CharField(max_length=10, choices=INTERVAL_CHOICES)
@@ -33,7 +34,7 @@ class OCLDataImport(models.Model):
     )
 
     def __str__(self):
-        return f"{self.asset} {self.interval} from {self.start_date} to {self.end_date}"
+        return self.name or f"{self.asset} {self.interval} from {self.start_date} to {self.end_date}"
 
     class Meta:
         verbose_name = 'OCL Data Import'

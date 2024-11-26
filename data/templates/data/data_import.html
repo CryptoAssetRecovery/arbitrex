@@ -10,7 +10,15 @@
     <div class="bg-white shadow rounded-lg p-6">
         <form method="post" class="space-y-6">
             {% csrf_token %}
-            
+
+            <!-- Name -->
+            <div class="space-y-2">
+                <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                    Name (optional)
+                </label>
+                {{ form.name|add_class:"mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" }}
+            </div>
+
             <!-- Asset Selection -->
             <div class="space-y-2">
                 <label for="{{ form.asset.id_for_label }}" class="block text-sm font-medium text-gray-700">

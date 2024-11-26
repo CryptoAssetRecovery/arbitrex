@@ -4,6 +4,11 @@ from .models import OCLDataImport
 
 class OCLDownloadForm(forms.ModelForm):
 
+    name = forms.CharField(
+        max_length=255,
+        widget=forms.TextInput(attrs={'class': 'p-2 mt-1 block w-full bg-gray-50 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500'})
+    )
+
     start_date = forms.DateField(
         input_formats=['%Y-%m-%d'],
         widget=forms.DateInput(attrs={
@@ -31,7 +36,7 @@ class OCLDownloadForm(forms.ModelForm):
 
     class Meta:
         model = OCLDataImport
-        fields = ['asset', 'interval', 'start_date', 'end_date']
+        fields = ['name', 'asset', 'interval', 'start_date', 'end_date']
 
     def clean(self):
         cleaned_data = super().clean()
