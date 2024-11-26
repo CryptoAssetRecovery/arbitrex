@@ -267,9 +267,6 @@ def run_backtest(backtest_id):
 
         backtest.save()
 
-        if total_trades == 0:
-            # print("Logged no-trade scenario in backtest results.")
-
         # Check if this is the best performing algo
         best_performance = BestPerformingAlgo.objects.order_by('-algo_sharpe_ratio').first()
         if best_performance is None or backtest.algo_sharpe_ratio > best_performance.algo_sharpe_ratio:
