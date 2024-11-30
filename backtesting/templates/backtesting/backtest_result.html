@@ -101,60 +101,13 @@
       <div class="mb-8 bg-white shadow rounded-lg p-6">
         <h3 class="text-xl font-semibold text-gray-800 mb-4">Result Plot</h3>
         <p class="text-gray-500 text-sm mb-4 -mt-2">This chart shows the price data and the trades taken during the backtest.</p>
-        <div id="chart-container" style="width: 100%; height: 400px;"></div>
-        <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+        <div id="chart-container" style="width: 100%; height: 600px;">
+          <!-- Chart will be rendered here -->
+        </div>
         <script>
-            document.addEventListener("DOMContentLoaded", function () {
-                const chartContainer = document.getElementById('chart-container');
-
-                // Initialize the Lightweight Chart
-                const chart = LightweightCharts.createChart(chartContainer, {
-                    width: chartContainer.clientWidth,
-                    height: 400,
-                    layout: {
-                        backgroundColor: '#ffffff',
-                        textColor: '#000000',
-                    },
-                    grid: {
-                        vertLines: {
-                            color: '#e1e1e1',
-                        },
-                        horzLines: {
-                            color: '#e1e1e1',
-                        },
-                    },
-                    timeScale: {
-                        borderColor: '#cccccc',
-                    },
-                });
-
-                // Add candlestick series
-                const candleSeries = chart.addCandlestickSeries();
-
-                // Fetch price and trade data from the API
-                fetch("{% url 'backtesting:backtest_chart_data' backtest.id %}")
-                    .then((response) => response.json())
-                    .then((data) => {
-                        console.log("Fetched Chart Data:", data);
-
-                        // Set price (OCL) data
-                        candleSeries.setData(data.priceData);
-
-                        // Add trade markers
-                        const markers = data.tradeData.map(trade => ({
-                            time: trade.time,
-                            position: 'aboveBar',
-                            color: trade.type === 'buy' ? '#4caf50' : '#ff5722', // Green for buy, red for sell
-                            shape: trade.type === 'buy' ? 'arrowUp' : 'arrowDown',
-                            text: `${trade.type.toUpperCase()} @ ${trade.price}`,
-                        }));
-                        candleSeries.setMarkers(markers);
-                    })
-                    .catch((error) => {
-                        console.error("Error fetching chart data:", error);
-                    });
-            });
+            window.BACKTEST_CHART_DATA_URL = "{% url 'backtesting:backtest_chart_data' backtest.id %}";
         </script>
+        <script src="{% static 'js/render_chart.js' %}"></script>
       </div>
 
       <!-- Strategy Code -->
@@ -163,7 +116,7 @@
         <!-- CodeMirror Editor -->
          <div class="-mx-6 -mb-6">
           <textarea id="strategy-code-editor" class="hidden">
-{{ backtest.strategy_code }}
+{{ backtest.strategy.code }}
           </textarea>
          </div>
 
