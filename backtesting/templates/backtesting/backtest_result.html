@@ -13,10 +13,10 @@
 
 {% block content %}
   <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
-  <div class="w-[1000px] mx-auto p-8 mt-8">
+  <div class="w-full mx-auto p-8 mt-8">
     <!-- Header Section -->
     {% if backtest.status == 'COMPLETED' %}
-    <div class="flex justify-between items-center mb-8">
+    <div class="flex justify-between items-center mb-8 w-[2000px]">
       <h2 class="text-3xl font-bold text-gray-800 overflow-hidden text-ellipsis whitespace-nowrap flex-1 mr-4">
         Backtest Result: {{ backtest.id }}
       </h2>
@@ -43,58 +43,99 @@
     {% endif %}
 
     {% if backtest.status == 'COMPLETED' %}
-      <!-- Stat Cards Section -->
-      <div class="mb-8">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          <!-- Sharpe Ratio Card -->
-          <div class="bg-white shadow rounded-lg p-6">
-            <div>
-              <p class="text-sm text-gray-500">Sharpe Ratio</p>
-              <p class="text-xl font-semibold text-gray-800">{{ backtest.algo_sharpe_ratio|floatformat:2 }}</p>
-            </div>
-          </div>
-          <!-- Win Rate Card -->
-          <div class="bg-white shadow rounded-lg p-6">
-            <div>
-              <p class="text-sm text-gray-500">Win Rate</p>
-              <p class="text-xl font-semibold text-gray-800">{{ backtest.algo_win_rate|floatformat:2 }}%</p>
-            </div>
-          </div>
-          <!-- Total Profit Card -->
-          <div class="bg-white shadow rounded-lg p-6">
-            <div>
-              <p class="text-sm text-gray-500">Total Profit</p>
-              <p class="text-xl font-semibold text-gray-800">{{ backtest.algo_return|floatformat:2 }}%</p>
-            </div>
+      <div class="flex flex-row space-x-8 w-full">
+        <!-- Stats Table Section -->
+        <div class="mb-8 bg-white shadow rounded-lg p-6 flex-1">
+          <div class="overflow-x-auto rounded-lg -mx-6 -my-6">
+            <table class="w-full text-sm text-left text-gray-500">
+              <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                <tr>
+                  <th scope="col" class="px-6 py-3">Metric</th>
+                  <th scope="col" class="px-6 py-3">Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="bg-white border-b">
+                  <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">Sharpe Ratio</td>
+                  <td class="px-6 py-4">{{ backtest.algo_sharpe_ratio|floatformat:2 }}</td>
+                </tr>
+                <tr class="bg-white border-b">
+                  <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">Win Rate</td>
+                  <td class="px-6 py-4">{{ backtest.algo_win_rate|floatformat:2 }}%</td>
+                </tr>
+                <tr class="bg-white border-b">
+                  <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">Total Profit</td>
+                  <td class="px-6 py-4">{{ backtest.algo_return|floatformat:2 }}%</td>
+                </tr>
+                <!-- Add additional stats here -->
+                <tr class="bg-white border-b">
+                  <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">Commission</td>
+                  <td class="px-6 py-4">
+                    {% if backtest.commission %}
+                      {{ backtest.commission|floatformat:3 }}%
+                    {% else %}
+                      N/A
+                    {% endif %}
+                  </td>
+                </tr>
+                <tr class="bg-white border-b">
+                  <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">Slippage</td>
+                  <td class="px-6 py-4">
+                    {% if backtest.slippage %}
+                      {{ backtest.slippage|floatformat:3 }}%
+                    {% else %}
+                      N/A
+                    {% endif %}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
-        <!-- New row for trading parameters -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <!-- Commission Card -->
-          <div class="bg-white shadow rounded-lg p-6">
-            <div>
-              <p class="text-sm text-gray-500">Commission</p>
-              {% if backtest.commission %}
-                <p class="text-xl font-semibold text-gray-800">{{ backtest.commission|floatformat:3 }}%</p>
-              {% else %}
-                <p class="text-xl font-semibold text-gray-800">N/A</p>
-              {% endif %}
-            </div>
-          </div>
-          <!-- Slippage Card -->
-          <div class="bg-white shadow rounded-lg p-6">
-            <div>
-              <p class="text-sm text-gray-500">Slippage</p>
-              {% if backtest.slippage %}
-                <p class="text-xl font-semibold text-gray-800">{{ backtest.slippage|floatformat:3 }}%</p>
-              {% else %}
-                <p class="text-xl font-semibold text-gray-800">N/A</p>
-              {% endif %}
-            </div>
-          </div>
+        <!-- Backtesting OCL Data Section -->
 
+        <div class="mb-8 bg-white shadow rounded-lg p-6 flex-1">
+          <div class="overflow-x-auto rounded-lg -mx-6 -my-6">
+            <table class="w-full text-sm text-left text-gray-500">
+              <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                <tr>
+                  <th scope="col" class="px-6 py-3">OCL Data Metric</th>
+                  <th scope="col" class="px-6 py-3">Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="bg-white border-b">
+                  <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">Created At</td>
+                  <td class="px-6 py-4">{{ backtest.ocl_data_import.created_at|date:"Y-m-d" }}</td>
+                </tr>
+                <tr class="bg-white border-b">
+                  <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">Import Name</td>
+                  <td class="px-6 py-4">
+                    {% if backtest.ocl_data_import is not None %}
+                      {{ backtest.ocl_data_import.name }}
+                    {% else %}
+                      N/A
+                    {% endif %}
+                  </td>
+                </tr>
+                <tr class="bg-white border-b">
+                  <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">Date Range</td>
+                  <td class="px-6 py-4">{{ backtest.ocl_data_import.start_date|date:"Y-m-d" }} - {{ backtest.ocl_data_import.end_date|date:"Y-m-d" }}</td>
+                </tr>
+                <tr class="bg-white border-b">
+                  <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">Asset</td>
+                  <td class="px-6 py-4">{{ backtest.ocl_data_import.asset }}</td>
+                </tr>
+                <tr class="bg-white border-b">
+                  <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">Interval</td>
+                  <td class="px-6 py-4">{{ backtest.ocl_data_import.interval }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
+
       </div>
 
       <!-- Result Plot -->
@@ -119,7 +160,6 @@
 {{ backtest.strategy.code }}
           </textarea>
          </div>
-
       </div>
 
     {% elif backtest.status == 'FAILED' %}

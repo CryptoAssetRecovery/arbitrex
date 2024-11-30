@@ -1,10 +1,11 @@
 document.addEventListener("DOMContentLoaded", function () {
     const chartContainer = document.getElementById('chart-container');
+    chartContainer.style.position = 'block'; // Ensure relative positioning
 
     // Initialize the Lightweight Chart
     const chart = LightweightCharts.createChart(chartContainer, {
-        width: chartContainer.clientWidth,
-        height: 600,  // Increased height for better visibility
+        height: 450,
+        autoSize: true,
         layout: {
             backgroundColor: '#ffffff',
             textColor: '#000000',
@@ -59,6 +60,15 @@ document.addEventListener("DOMContentLoaded", function () {
         },
     });
 
+    const resizeObserver = new ResizeObserver(entries => {
+        if (entries.length === 0 || entries[0].target !== chartContainer) {
+            return;
+        }
+        const { width, height } = entries[0].contentRect;
+        chart.resize(width, height);
+    });
+    resizeObserver.observe(chartContainer);
+
     // Add candlestick series (price chart)
     const candleSeries = chart.addCandlestickSeries({
         upColor: '#4caf50',
@@ -67,6 +77,8 @@ document.addEventListener("DOMContentLoaded", function () {
         borderUpColor: '#4caf50',
         wickDownColor: '#ff5722',
         wickUpColor: '#4caf50',
+        lastValueVisible: false,  // Hide the last value label
+        priceLineVisible: false,  // Hide the price line
     });
 
     // Add portfolio balance series
@@ -75,6 +87,69 @@ document.addEventListener("DOMContentLoaded", function () {
         lineWidth: 2,
         priceScaleId: 'left',
         title: 'Portfolio Value',
+        lastValueVisible: false,  // Hide the last value label
+        priceLineVisible: false,  // Hide the price line
+    });
+
+    // Create and configure the tooltip element
+    const toolTipElement = document.createElement('div');
+    toolTipElement.className = 'floating-tooltip';
+    chartContainer.appendChild(toolTipElement);
+    toolTipElement.style.position = 'absolute';
+    toolTipElement.style.display = 'none';
+    toolTipElement.style.padding = '8px';
+    toolTipElement.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+    toolTipElement.style.color = 'white';
+    toolTipElement.style.borderRadius = '4px';
+    toolTipElement.style.fontSize = '12px';
+    toolTipElement.style.pointerEvents = 'none'; // Prevent tooltip from capturing mouse events
+
+    // Subscribe to crosshair move to show/hide tooltip
+    chart.subscribeCrosshairMove(param => {
+        if (!param.time || param.point === undefined) {
+            toolTipElement.style.display = 'none';
+            return;
+        }
+
+        const markers = candleSeries.markers();
+        if (!markers) {
+            toolTipElement.style.display = 'none';
+            return;
+        }
+
+        const currentTime = param.time;
+        const marker = markers.find(m => m.time === currentTime);
+        
+        if (marker) {
+            toolTipElement.style.display = 'block';
+            toolTipElement.innerHTML = marker.tooltip;
+            
+            const yPrice = param.seriesPrices.get(candleSeries);
+            const coordinate = candleSeries.priceToCoordinate(yPrice);
+            const chartRect = chartContainer.getBoundingClientRect();
+            const toolTipRect = toolTipElement.getBoundingClientRect();
+            
+            // Calculate tooltip position relative to chart container
+            const tooltipX = param.point.x - toolTipRect.width / 2;
+            let tooltipY;
+            if (marker.position === 'aboveBar') {
+                tooltipY = coordinate - toolTipRect.height - 10;
+            } else {
+                tooltipY = coordinate + 10;
+            }
+
+            // Ensure tooltip stays within the chart container
+            const maxX = chartContainer.clientWidth - toolTipRect.width;
+            const clampedX = Math.max(0, Math.min(tooltipX, maxX));
+
+            const maxY = chartContainer.clientHeight - toolTipRect.height;
+            const clampedY = Math.max(0, Math.min(tooltipY, maxY));
+
+            toolTipElement.style.left = `${clampedX}px`;
+            toolTipElement.style.top = `${clampedY}px`;
+        } else {
+            toolTipElement.style.display = 'none';
+        }
     });
 
     // Fetch price and trade data from the API using the global URL
@@ -116,8 +191,9 @@ document.addEventListener("DOMContentLoaded", function () {
                     position: trade.type === 'buy' ? 'belowBar' : 'aboveBar',
                     color: trade.type === 'buy' ? '#4caf50' : '#ef5350',  // Green for buy, Red for sell
                     shape: trade.type === 'buy' ? 'arrowUp' : 'arrowDown',
-                    text: `${trade.type.toUpperCase()} ${trade.size} @ ${trade.price}`,
-                    size: 2  // Slightly larger size for better visibility
+                    text: '',
+                    tooltip: `${trade.type.toUpperCase()} ${trade.size} @ ${trade.price}`,
+                    size: 2
                 }));
                 console.log("Trade Markers:", tradeMarkers);
                 allMarkers = [...tradeMarkers];
@@ -130,8 +206,9 @@ document.addEventListener("DOMContentLoaded", function () {
                     position: order.type === 'buy' ? 'belowBar' : 'aboveBar',
                     color: order.type === 'buy' ? '#4caf50' : '#ef5350',  // Green for buy, Red for sell
                     shape: order.type === 'buy' ? 'arrowUp' : 'arrowDown',  // Triangles instead of circles
-                    text: `${order.type.toUpperCase()} ${order.size} @ ${order.price}`,
-                    size: 2  // Slightly larger size for better visibility
+                    text: '',
+                    tooltip: `${order.type.toUpperCase()} ${order.size} @ ${order.price}`,
+                    size: 2
                 }));
                 console.log("Order Markers:", orderMarkers);
                 allMarkers = [...allMarkers, ...orderMarkers];
@@ -158,6 +235,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Make the chart responsive
     window.addEventListener('resize', () => {
-        chart.applyOptions({ width: chartContainer.clientWidth });
+        const newWidth = chartContainer.getBoundingClientRect().width;
+        chart.applyOptions({ width: newWidth });
     });
 });
