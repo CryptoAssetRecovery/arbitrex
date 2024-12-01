@@ -13,6 +13,6 @@ gunicorn==23.0.0
 matplotlib==3.9.2
 django-redis
 whitenoise==6.8.2
-psycopg==3.2.3
+psycopg2-binary==2.9.10
 scikit-learn==1.5.2
 anthropic==0.40.0
