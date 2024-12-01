@@ -13,10 +13,10 @@
 
 {% block content %}
   <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
-  <div class="w-full mx-auto p-8 mt-8">
+  <div class="max-w-7xl w-[1200px] mx-auto p-8 mt-8">
     <!-- Header Section -->
     {% if backtest.status == 'COMPLETED' %}
-    <div class="flex justify-between items-center mb-8 w-[2000px]">
+    <div class="flex justify-between items-center mb-8">
       <h2 class="text-3xl font-bold text-gray-800 overflow-hidden text-ellipsis whitespace-nowrap flex-1 mr-4">
         Backtest Result: {{ backtest.id }}
       </h2>
