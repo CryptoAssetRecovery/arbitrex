@@ -1,6 +1,7 @@
 */__pycache__/
 venv/
 node_modules/
+models/*
 
 *.sqlite3
 *.log

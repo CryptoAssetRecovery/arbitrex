@@ -148,7 +148,7 @@
         <script>
             window.BACKTEST_CHART_DATA_URL = "{% url 'backtesting:backtest_chart_data' backtest.id %}";
         </script>
-        <script src="{% static 'js/render_chart.js' %}"></script>
+        <script type="text/javascript" src="{% static 'js/render_chart.js' %}"></script>
       </div>
 
       <!-- Strategy Logs -->
