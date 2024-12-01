@@ -21,11 +21,13 @@ from .analyzers import (
 
 import backtrader as bt
 import matplotlib.pyplot as plt
+from sklearn.ensemble import RandomForestClassifier
 from pathlib import Path
 from io import BytesIO
 import pandas as pd
 import datetime
 import json
+import re
 
 def get_ocl_historical_data(data_import_id):
     """
@@ -91,6 +93,17 @@ def run_backtest(backtest_id):
     # Use Agg backend for matplotlib
     matplotlib.use('Agg')
 
+    # Add a list to store strategy logs
+    strategy_logs = []
+    
+    # Create a custom logging function that will be injected into the strategy
+    def capture_log(strategy, txt, dt=None):
+        dt = dt or strategy.datas[0].datetime.date(0)
+        log_entry = f'{dt.isoformat()} {txt}'
+        strategy_logs.append(log_entry)
+        # Optionally, keep console logging as well
+        # print(log_entry)
+
     try:
         backtest = BacktestResult.objects.get(id=backtest_id)
         backtest.status = 'RUNNING'
@@ -109,8 +122,42 @@ def run_backtest(backtest_id):
 
         # Dynamically create a Strategy class from user code
         strategy_code = backtest.strategy.code
-        exec_globals = {}
+        backtest.strategy_code = strategy_code
+        backtest.save()
+
+        # Inject our custom logging function into the strategy's namespace
+        exec_globals = {
+            'capture_strategy_log': capture_log,
+            'bt': bt,  # Make sure all required imports are available
+            'pd': pd,
+            'datetime': datetime,
+            'RandomForestClassifier': RandomForestClassifier,
+        }
+
+        # Determine the correct indentation level by inspecting the original strategy code
+        # We'll search for the original log method to find its indentation
+        log_method_pattern = re.compile(r'^(\s+)def log\(self, txt, dt=None\):', re.MULTILINE)
+        match = log_method_pattern.search(strategy_code)
+
+        if match:
+            indentation = match.group(1)
+            # Replace the original log method with the overridden version
+            strategy_code = re.sub(
+                r'^(\s+)def log\(self, txt, dt=None\):.*',
+                f"{indentation}def log(self, txt, dt=None):\n{indentation}    capture_strategy_log(self, txt, dt)",
+                strategy_code,
+                flags=re.MULTILINE
+            )
+        else:
+            # If no log method is found, append the overridden log method to the class
+            # Assuming the strategy class definition starts with 'class'
+            class_def_pattern = re.compile(r'^(class\s+\w+\(bt\.Strategy\):)', re.MULTILINE)
+            strategy_code = class_def_pattern.sub(r'\1\n    def log(self, txt, dt=None):\n        capture_strategy_log(self, txt, dt)', strategy_code, count=1)
+
+        # Execute the modified strategy code
         exec(strategy_code, exec_globals)
+
+        # Identify the UserStrategy class
         UserStrategy = None
         for obj in exec_globals.values():
             if isinstance(obj, type) and issubclass(obj, bt.Strategy):
@@ -152,10 +199,8 @@ def run_backtest(backtest_id):
         )
         cerebro.adddata(data_feed)
 
-        # Initialize storage for trade data
-        trade_data = []  # Initialize trade_data as an empty list
-
-        # Initialize storage for order data
+        # Initialize storage for trade data and order data
+        trade_data = []
         order_data = []
 
         # Add all analyzers
@@ -211,8 +256,8 @@ def run_backtest(backtest_id):
 
         # Trade Analyzer for Win Rate
         trade_analyzer = first_strategy.analyzers.trade_analyzer.get_analysis()
-        total_trades = trade_analyzer.total.total if hasattr(trade_analyzer, 'total') and trade_analyzer.total.total else 0
-        won_trades = trade_analyzer.won.total if hasattr(trade_analyzer, 'won') and trade_analyzer.won.total else 0
+        total_trades = trade_analyzer.get('total', {}).get('total', 0)
+        won_trades = trade_analyzer.get('won', {}).get('total', 0)
         win_rate = (won_trades / total_trades) * 100 if total_trades > 0 else 0.0
 
         # Handle case with no trades
@@ -229,14 +274,15 @@ def run_backtest(backtest_id):
                 f"Profit/Loss:             ${cerebro.broker.getvalue() - initial_cash:.2f}\n"
                 f"Return:                  {((cerebro.broker.getvalue() - initial_cash) / initial_cash) * 100:.2f}%\n"
                 f"Sharpe Ratio:            {sharpe_ratio:.2f}\n"
-                f"Win Rate:                {win_rate:.2f}%"
+                f"Win Rate:                {win_rate:.2f}%\n"
+                f"Number of Trades:        {total_trades}"
             )
 
         # Retrieve trade transactions from the custom TradeListAnalyzer
         trade_list_analyzer = first_strategy.analyzers.trade_list.get_analysis()
         trades = trade_list_analyzer.get('trades', [])
 
-        # Populate trade_data
+        # Populate trade_data again if necessary (this seems redundant, ensure it's intentional)
         for trade in trades:
             trade_entry = {
                 "time": trade['datetime'].strftime('%Y-%m-%d %H:%M:%S'),
@@ -251,7 +297,7 @@ def run_backtest(backtest_id):
         order_list_analyzer = first_strategy.analyzers.order_list.get_analysis()
         orders = order_list_analyzer.get('orders', [])
 
-        # Populate order_data (all executed orders)
+        # Populate order_data (all executed orders) again if necessary
         for order in orders:
             order_entry = {
                 "time": order['datetime'].strftime('%Y-%m-%d %H:%M:%S'),
@@ -271,15 +317,14 @@ def run_backtest(backtest_id):
         # Save portfolio values as JSON
         backtest.portfolio_values_json = json.dumps(backtest.portfolio_values)
 
-        # Save trade data
-        backtest.trade_data = trade_data  # Now trade_data is defined
+        # Save trade data as JSON
         backtest.trade_data_json = json.dumps(trade_data)
         
         # Create trades directory if it doesn't exist
         trades_dir = Path('media/trades')
         trades_dir.mkdir(parents=True, exist_ok=True)
         
-        # Save backtest result
+        # Save backtest result plot
         final_value = cerebro.broker.getvalue()
 
         # Generate plots with interactive mode explicitly disabled
@@ -309,7 +354,13 @@ def run_backtest(backtest_id):
         backtest.status = 'COMPLETED'
         backtest.completed_at = datetime.datetime.utcnow()
         backtest.parameters = json.dumps(backtest.parameters)  # Assuming parameters is a dict
-        backtest.log = performance_summary
+        backtest.log = "\n".join([
+            "Strategy Logs:",
+            "==============",
+            *strategy_logs,
+            "",
+            performance_summary  # Keep the existing performance summary
+        ])
 
         if total_trades == 0:
             # Save default metrics when no trades are made

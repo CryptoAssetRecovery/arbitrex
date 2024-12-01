@@ -16,6 +16,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Establish the model map
+MODEL_MAP = {
+    "openai": ["gpt-4o", "o1-mini"],
+    "anthropic": ["claude-3-5-sonnet-20241022"]
+}
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 

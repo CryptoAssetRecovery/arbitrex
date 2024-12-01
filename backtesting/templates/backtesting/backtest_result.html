@@ -151,13 +151,32 @@
         <script src="{% static 'js/render_chart.js' %}"></script>
       </div>
 
+      <!-- Strategy Logs -->
+      <div class="mb-8 bg-white shadow rounded-lg p-6">
+        <div class="flex items-center justify-between cursor-pointer" onclick="toggleLogs()">
+          <h3 class="text-xl font-semibold text-gray-800">Strategy Logs</h3>
+          <button class="text-gray-500 hover:text-gray-700" id="logs-toggle">
+            <svg id="logs-chevron" class="w-6 h-6 transform transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </div>
+        <div id="logs-content" class="hidden mt-4 -mx-6 -mb-6">
+          <textarea id="strategy-logs-editor" class="hidden">{{ backtest.log }}</textarea>
+        </div>
+      </div>
+
       <!-- Strategy Code -->
       <div class="mb-8 bg-white shadow rounded-lg p-6">
         <h3 class="text-xl font-semibold text-gray-800 mb-4">Strategy Code</h3>
         <!-- CodeMirror Editor -->
          <div class="-mx-6 -mb-6">
           <textarea id="strategy-code-editor" class="hidden">
+            {% if backtest.strategy_code %}
+{{ backtest.strategy_code }}
+            {% else %}
 {{ backtest.strategy.code }}
+            {% endif %}
           </textarea>
          </div>
       </div>
@@ -203,7 +222,35 @@
             
             // Add rounded corners to the CodeMirror element
             editor.getWrapperElement().classList.add('rounded-b-lg');
+            
+            // New CodeMirror setup for logs
+            const logsTextarea = document.getElementById("strategy-logs-editor");
+            const logsEditor = CodeMirror.fromTextArea(logsTextarea, {
+                mode: "text",
+                theme: "monokai",
+                lineNumbers: true,
+                readOnly: true,
+                lineWrapping: true,
+            });
+            logsEditor.setSize("100%", "300px");
+            logsEditor.getWrapperElement().classList.add('rounded-b-lg');
+            
+            // Store the logs editor in window for access by toggle function
+            window.logsEditor = logsEditor;
         });
+
+        function toggleLogs() {
+            const content = document.getElementById('logs-content');
+            const chevron = document.getElementById('logs-chevron');
+            
+            content.classList.toggle('hidden');
+            chevron.classList.toggle('rotate-180');
+            
+            // Refresh CodeMirror when showing (prevents rendering issues)
+            if (!content.classList.contains('hidden')) {
+                window.logsEditor.refresh();
+            }
+        }
 
         // Polling Mechanism
         {% if backtest.status == 'PENDING' or backtest.status == 'RUNNING' %}
