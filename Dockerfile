@@ -8,13 +8,6 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV DJANGO_SETTINGS_MODULE=arbitrex.settings
 
-# Install dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libpq-dev \
-    --no-install-recommends \
-    && rm -rf /var/lib/apt/lists/*
-
 # Set work directory
 WORKDIR /app
 
@@ -23,16 +16,16 @@ COPY requirements.txt /app/
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-# Copy project
-COPY . /app/
-
-# Create staticfiles directory
-RUN mkdir -p /app/staticfiles
+# Create staticfiles directory with correct permissions
+RUN mkdir -p /app/staticfiles && chmod 755 /app/staticfiles
 
 # Create and switch to non-root user
 RUN adduser --disabled-password --no-create-home myuser
 RUN chown -R myuser:myuser /app
 USER myuser
+
+# Copy project
+COPY --chown=myuser:myuser . /app/
 
 # Collect static files
 RUN python manage.py collectstatic --noinput --clear
