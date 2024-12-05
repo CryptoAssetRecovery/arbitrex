@@ -146,7 +146,6 @@
           <!-- Chart will be rendered here -->
         </div>
         <script>
-            // Add CSRF token to window object
             window.CSRF_TOKEN = "{{ csrf_token }}";
             window.BACKTEST_CHART_DATA_URL = "{% url 'backtesting:backtest_chart_data' backtest.id %}";
         </script>

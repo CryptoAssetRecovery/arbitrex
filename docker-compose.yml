@@ -1,11 +1,10 @@
-version: '3.8'
-
 services:
   web:
     build: .
     command: gunicorn arbitrex.wsgi:application --bind 0.0.0.0:8000 --timeout 120
     volumes:
       - .:/app
+      - ${STATICFILES_PATH}:/app/staticfiles
     ports:
       - "8000:8000"
     env_file:
@@ -21,6 +20,7 @@ services:
     command: celery -A arbitrex worker --loglevel=info
     volumes:
       - .:/app
+      - ${STATICFILES_PATH}:/app/staticfiles
     env_file:
       - .env
     depends_on:
