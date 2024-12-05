@@ -371,7 +371,25 @@
                 // Add user message to chat
                 addMessage(message, true);
                 chatInput.value = '';
-                
+
+                // Add a temporary polling message
+                const pollingMessage = document.createElement('div');
+                pollingMessage.className = 'flex justify-start';
+                pollingMessage.innerHTML = `
+                    <div class="max-w-[100%] mt-2 rounded-lg p-3 bg-white">
+                        <p class="text-sm">...</p>
+                    </div>
+                `;
+                chatMessages.appendChild(pollingMessage);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+
+                // Update the polling message periodically
+                let dots = 1;
+                const pollingInterval = setInterval(() => {
+                    pollingMessage.querySelector('p').textContent = '.'.repeat(dots);
+                    dots = (dots % 3) + 1;
+                }, 500);
+
                 try {
                     const llmModel = llmModelField.value;
                     const includeBacktestLogs = document.getElementById('include_last_backtest_logs')?.checked || false;
@@ -393,12 +411,17 @@
                     });
                     
                     const data = await response.json();
+                    clearInterval(pollingInterval); // Stop updating the polling message
+                    pollingMessage.remove(); // Remove the polling message
+
                     if (data.success) {
                         addMessage(data.response);
                     } else {
                         addMessage('Error: ' + data.error);
                     }
                 } catch (error) {
+                    clearInterval(pollingInterval); // Stop updating the polling message
+                    pollingMessage.remove(); // Remove the polling message
                     addMessage('Error: Failed to send message');
                     console.error('Fetch error:', error);
                 }

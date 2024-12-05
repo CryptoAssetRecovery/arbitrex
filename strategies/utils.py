@@ -66,7 +66,7 @@ def chat_with_anthropic(messages, model="claude-3-5-sonnet-20241022"):
             model=model,
             messages=filtered_messages,
             system=system_prompt,
-            max_tokens=1024,
+            max_tokens=4096,
         )
         
         return response.content[0].text.strip()

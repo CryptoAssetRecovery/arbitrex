@@ -8,11 +8,14 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_POST
+from django.core.cache import cache
+import uuid
 
 from backtesting.models import BacktestResult
 from .utils import chat_with_openai, chat_with_anthropic
 from .models import Strategy
 from .forms import StrategyForm
+from .backtrader_docks import BACKTRADER_DOCS
 
 from dotenv import load_dotenv
 import openai
@@ -34,6 +37,17 @@ MODEL_TO_PROVIDER = {model: provider for provider, models in MODEL_MAP.items() f
 @csrf_protect
 @require_POST
 def chat_with_ai(request):
+    # Generate a unique request ID
+    request_id = str(uuid.uuid4())
+    session_key = f"chat_lock_{request.user.id}"
+    
+    # Try to acquire a lock with a timeout
+    if not cache.add(session_key, request_id, timeout=30):  # 30 seconds timeout
+        return JsonResponse({
+            'success': False,
+            'error': "Another chat request is in progress. Please wait."
+        }, status=429)  # 429 Too Many Requests
+
     try:
         # Get the chat messages and LLM model
         messages = request.POST.get('message_history')
@@ -59,26 +73,49 @@ def chat_with_ai(request):
         # Convert messages to a list of dictionaries
         messages = json.loads(messages)
 
-        # Get the backtesting code
+        # Load the backtesting code
         with open('backtesting/tasks.py', 'r') as file:
             backtesting_code = file.read()
 
-        # Add the user's code to the most recent user message
-        system_messages = [
-            {"role": "system", "content": f"Here is the current trading strategy code:\n\n```python\n{code}\n```Only assist the user with the custom backtrader code - do not provide any other information pertaining to the main, or other parts of the code."},
-            {"role": "system", "content": f"Here is the current backtesting code. The user **cannot** modify the backtesting code. Make sure that the strategy code is compatible with the backtesting code:\n\n```python\n{backtesting_code}\n```"}
+        # Define static system messages
+        static_system_messages = [
+            {"role": "system", "content": f"<SYSTEM_MESSAGE>Docs for the backtrader library and some examples:\n\n{BACKTRADER_DOCS}</SYSTEM_MESSAGE>"},
+            {"role": "system", "content": f"<SYSTEM_MESSAGE>Current backtesting code. The user **cannot** modify the backtesting code. Make sure that the strategy code is compatible with the backtesting code:\n\n```python\n{backtesting_code}\n```</SYSTEM_MESSAGE>"}
         ]
 
+        # Check if static system messages are already present
+        static_present = all(
+            any(
+                msg.get('content') == system_msg.get('content') 
+                for msg in messages 
+            ) 
+            for system_msg in static_system_messages
+        )
+
+        if not static_present:
+            # Prepend static system messages once
+            messages = static_system_messages + messages
+
+        # Define dynamic system message with the current strategy code
+        dynamic_system_message = {
+            "role": "system",
+            "content": f"<SYSTEM_MESSAGE>Current trading strategy code:\n\n```python\n{code}\n```\nOnly assist the user with the custom backtrader code - do not provide any other information pertaining to the main, or other parts of the code.</SYSTEM_MESSAGE>"
+        }
+
+        # Prepend dynamic system message every time
+        messages = [dynamic_system_message] + messages
+
         # Append the backtest results if the user checked the checkbox
-        if include_last_backtest_logs:
-            last_backtest = BacktestResult.objects.filter(id=last_backtest_id).first()
+        if include_last_backtest_logs and last_backtest_id != 'null':
+            last_backtest = BacktestResult.objects.filter(id=int(last_backtest_id)).first()
             if last_backtest:
                 backtest_log = last_backtest.log[-1000:] if len(last_backtest.log) > 1000 else last_backtest.log
-                print(backtest_log)
-                system_messages.append({"role": "system", "content": f"Here is the backtest results from backtest {last_backtest.id}:\n\n```python\n{backtest_log}\n```"})
-
-        # Add the system messages to the list
-        messages = system_messages + messages
+                # Find the last user message
+                for i in range(len(messages)-1, -1, -1):
+                    if messages[i].get('role') == 'user':
+                        # Insert backtest results before the last user message
+                        messages.insert(i, {"role": "system", "content": f"<SYSTEM_MESSAGE>Here is the backtest results from backtest {last_backtest.id}:\n\n```python\n{backtest_log}\n```</SYSTEM_MESSAGE>"})
+                        break
 
         # Call the appropriate chat function based on provider
         if llm_provider == "openai":
@@ -100,6 +137,10 @@ def chat_with_ai(request):
             'success': False,
             'error': str(e)
         }, status=500)
+    finally:
+        # Release the lock if we still own it
+        if cache.get(session_key) == request_id:
+            cache.delete(session_key)
 
 class StrategyListView(LoginRequiredMixin, ListView):
     model = Strategy
@@ -127,11 +168,6 @@ class StrategyDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
         best_win_rate = best_backtest.algo_win_rate if best_backtest else None
         best_return = best_backtest.algo_return if best_backtest else None
 
-        print(best_sharpe_ratio)
-        print(best_win_rate)
-        print(best_return)
-        print(best_backtest)
-
         context['best_sharpe_ratio'] = best_sharpe_ratio
         context['best_win_rate'] = best_win_rate
         context['best_return'] = best_return
@@ -146,7 +182,18 @@ class StrategyCreateView(LoginRequiredMixin, CreateView):
 
     def form_valid(self, form):
         form.instance.user = self.request.user
+        messages.success(self.request, 'Strategy created successfully!')
         return super().form_valid(form)
+
+    def form_invalid(self, form):
+        # Add all form errors to messages
+        for field, errors in form.errors.items():
+            for error in errors:
+                if field == '__all__':
+                    messages.error(self.request, error)
+                else:
+                    messages.error(self.request, f"{field}: {error}")
+        return super().form_invalid(form)
 
 class StrategyUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     model = Strategy
@@ -162,6 +209,16 @@ class StrategyUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
         context = super().get_context_data(**kwargs)
         context['last_backtest'] = BacktestResult.objects.filter(strategy=self.object).order_by('-created_at').first() if BacktestResult.objects.filter(strategy=self.object).exists() else None
         return context
+    
+    def form_invalid(self, form):
+        # Add all form errors to messages
+        for field, errors in form.errors.items():
+            for error in errors:
+                if field == '__all__':
+                    messages.error(self.request, error)
+                else:
+                    messages.error(self.request, f"{field}: {error}")
+        return super().form_invalid(form)
 
 class StrategyDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
     model = Strategy

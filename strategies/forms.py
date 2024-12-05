@@ -4,6 +4,8 @@ from django import forms
 from .models import Strategy
 import backtrader as bt
 
+import pkg_resources
+
 STRATEGY_TEMPLATE = '''
 import backtrader as bt
 
@@ -50,20 +52,84 @@ class StrategyForm(forms.ModelForm):
 
     def clean_code(self):
         code = self.cleaned_data.get('code')
-        exec_globals = {}
+
+        installed_packages = {pkg.key for pkg in pkg_resources.working_set}
+        
+        # Step 1: Syntax checking using compile()
         try:
-            exec(code, exec_globals)
-        except Exception as e:
-            raise forms.ValidationError(f"Error executing code: {e}")
+            compiled_code = compile(code, '<string>', 'exec')
+        except SyntaxError as e:
+            raise forms.ValidationError(f"Syntax error in code: {e}")
 
-        # Check for Strategy class
-        strategy_class = None
-        for obj in exec_globals.values():
-            if isinstance(obj, type) and issubclass(obj, bt.Strategy):
-                strategy_class = obj
-                break
+        # Step 2: Analyzing the AST
+        import ast
+        try:
+            tree = ast.parse(code)
+        except SyntaxError as e:
+            raise forms.ValidationError(f"Syntax error in code: {e}")
 
-        if not strategy_class:
-            raise forms.ValidationError("The code must define a class that inherits from backtrader.Strategy.")
+        # Look for a class that inherits from bt.Strategy
+        strategy_class_found = False
+        strategy_methods = set()
+        required_methods = {'next'}
+
+        class StrategyVisitor(ast.NodeVisitor):
+            def visit_ClassDef(self, node):
+                nonlocal strategy_class_found
+                # Check base classes
+                for base in node.bases:
+                    base_name = self.get_base_name(base)
+                    if base_name in ('bt.Strategy', 'Strategy'):
+                        strategy_class_found = True
+                        # Collect method names
+                        for item in node.body:
+                            if isinstance(item, ast.FunctionDef):
+                                strategy_methods.add(item.name)
+                self.generic_visit(node)
+
+            def get_base_name(self, base):
+                if isinstance(base, ast.Attribute):
+                    return f"{self.get_base_name(base.value)}.{base.attr}"
+                elif isinstance(base, ast.Name):
+                    return base.id
+                else:
+                    return ''
+
+            def visit_Import(self, node):
+                for alias in node.names:
+                    if alias.name in ['os', 'sys', 'subprocess']:
+                        raise forms.ValidationError(f"Importing '{alias.name}' is not allowed.")
+                    
+                    # Check if package is installed
+                    package_name = alias.name.split('.')[0]  # Get base package name
+                    if package_name not in installed_packages and package_name not in ['backtrader', 'bt']:
+                        raise forms.ValidationError(f"Package '{package_name}' is not installed.")
+                self.generic_visit(node)
+
+            def visit_ImportFrom(self, node):
+                if node.module in ['os', 'sys', 'subprocess']:
+                    raise forms.ValidationError(f"Importing from '{node.module}' is not allowed.")
+                    
+                # Check if package is installed
+                package_name = node.module.split('.')[0]  # Get base package name
+                if package_name not in installed_packages and package_name not in ['backtrader', 'bt']:
+                    raise forms.ValidationError(f"Package '{package_name}' is not installed. Please add it to requirements.txt")
+                self.generic_visit(node)
+
+            def visit_Call(self, node):
+                if isinstance(node.func, ast.Name):
+                    if node.func.id in ['eval', 'exec', 'open']:
+                        raise forms.ValidationError(f"Using '{node.func.id}' is not allowed.")
+                self.generic_visit(node)
+
+        visitor = StrategyVisitor()
+        visitor.visit(tree)
+
+        if not strategy_class_found:
+            raise forms.ValidationError("The code must define a class that inherits from bt.Strategy.")
+
+        missing_methods = required_methods - strategy_methods
+        if missing_methods:
+            raise forms.ValidationError(f"The Strategy class is missing required methods: {', '.join(missing_methods)}")
 
         return code
