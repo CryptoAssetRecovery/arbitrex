@@ -22,6 +22,11 @@ COPY --from=builder /usr /usr
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
+# Add these lines
+RUN groupadd -g 33 www-data && \
+    useradd -u 33 -g www-data -s /bin/bash www-data
+USER www-data
+
 # Set working directory
 WORKDIR /app
 
