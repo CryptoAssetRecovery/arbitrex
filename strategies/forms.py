@@ -53,8 +53,6 @@ class StrategyForm(forms.ModelForm):
     def clean_code(self):
         code = self.cleaned_data.get('code')
 
-        installed_packages = {pkg.key for pkg in pkg_resources.working_set}
-        
         # Step 1: Syntax checking using compile()
         try:
             compiled_code = compile(code, '<string>', 'exec')
@@ -99,21 +97,11 @@ class StrategyForm(forms.ModelForm):
                 for alias in node.names:
                     if alias.name in ['os', 'sys', 'subprocess']:
                         raise forms.ValidationError(f"Importing '{alias.name}' is not allowed.")
-                    
-                    # Check if package is installed
-                    package_name = alias.name.split('.')[0]  # Get base package name
-                    if package_name not in installed_packages and package_name not in ['backtrader', 'bt']:
-                        raise forms.ValidationError(f"Package '{package_name}' is not installed.")
                 self.generic_visit(node)
 
             def visit_ImportFrom(self, node):
                 if node.module in ['os', 'sys', 'subprocess']:
                     raise forms.ValidationError(f"Importing from '{node.module}' is not allowed.")
-                    
-                # Check if package is installed
-                package_name = node.module.split('.')[0]  # Get base package name
-                if package_name not in installed_packages and package_name not in ['backtrader', 'bt']:
-                    raise forms.ValidationError(f"Package '{package_name}' is not installed. Please add it to requirements.txt")
                 self.generic_visit(node)
 
             def visit_Call(self, node):
