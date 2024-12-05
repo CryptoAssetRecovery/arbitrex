@@ -23,8 +23,12 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # Add these lines
-RUN groupadd -g 33 www-data && \
-    useradd -u 33 -g www-data -s /bin/bash www-data
+RUN if ! getent group www-data; then \
+        groupadd -g 33 www-data; \
+    fi && \
+    if ! id -u www-data >/dev/null 2>&1; then \
+        useradd -u 33 -g www-data -s /bin/bash www-data; \
+    fi
 USER www-data
 
 # Set working directory
