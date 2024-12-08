@@ -5,6 +5,10 @@ from dotenv import load_dotenv
 import os
 import openai
 import anthropic
+import backtrader as bt
+import pandas as pd
+import datetime
+from sklearn.ensemble import RandomForestClassifier
 
 load_dotenv()
 
@@ -72,3 +76,29 @@ def chat_with_anthropic(messages, model="claude-3-5-sonnet-20241022"):
         return response.content[0].text.strip()
     except Exception as e:
         raise Exception(f"Anthropic API error: {str(e)}")
+
+def load_strategies_and_inject_log(strategy_code, capture_log_func):
+    """
+    Execute user strategy code, find the strategy class, and inject a custom log method.
+    """
+    exec_globals = {
+        'capture_strategy_log': capture_log_func,
+        'bt': bt,
+        'pd': pd,
+        'datetime': datetime,
+        'RandomForestClassifier': RandomForestClassifier,
+    }
+
+    exec(strategy_code, exec_globals)
+    UserStrategy = None
+    for obj in exec_globals.values():
+        if isinstance(obj, type) and issubclass(obj, bt.Strategy):
+            UserStrategy = obj
+            break
+
+    if not UserStrategy:
+        raise ValueError("Strategy class not defined or not inheriting from bt.Strategy.")
+
+    # Assign a log method directly
+    UserStrategy.log = lambda self, txt, dt=None: capture_log_func(self, txt, dt)
+    return UserStrategy

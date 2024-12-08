@@ -2,6 +2,10 @@
 {% extends "base.html" %}
 {% load static %}
 
+{% block head %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+{% endblock %}
+
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
     <div class="flex items-center justify-between mb-6">
@@ -14,7 +18,7 @@
     <div class="bg-white shadow rounded-lg p-6">
         <form method="post" class="space-y-6">
             {% csrf_token %}
-            
+
             <!-- Strategy Selection -->
             <div class="space-y-2">
                 <label for="{{ form.strategy.id_for_label }}" class="block text-sm font-medium text-gray-700">
@@ -59,6 +63,15 @@
                 </div>
             </div>
 
+            <!-- Hidden field for parameters (JSON) -->
+            {{ form.parameters }}
+
+            <!-- Dynamic Parameter Fields will be injected here -->
+            <div class="space-y-2 hidden border rounded-md p-4" id="param-fields-container">
+                <h3 class="text-lg font-medium text-gray-900">Strategy Parameters</h3>
+                <div id="param-fields"></div>
+            </div>
+
             <div class="pt-4">
                 <button type="submit" class="w-full inline-flex justify-center items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition">
                     Start Backtest
@@ -67,4 +80,84 @@
         </form>
     </div>
 </div>
+
+<script>
+    $(document).ready(function() {
+        $('#id_strategy').change(function() {
+            var strategyId = $(this).val();
+            if (!strategyId) {
+                $('#param-fields-container').addClass('hidden');
+                return;
+            }
+            $.getJSON(`{% url 'backtesting:strategy_parameters' 0 %}`.replace('0', strategyId), function(data) {
+                $('#param-fields-container').removeClass('hidden');
+                $('#param-fields').empty();
+                if (data.warning) {
+                    $('#param-fields').append('<p class="text-sm text-yellow-600">' + data.warning + '</p>');
+                } else if (data.parameters) {
+                    var paramGrid = $('<div class="grid grid-cols-2 gap-4"></div>');
+                    $.each(data.parameters, function(key, value) {
+                        // For each parameter, create an input field
+                        var paramDiv = $('<div class="space-y-2"></div>');
+                        var label = $('<label class="block text-sm font-medium text-gray-700"></label>').text(key);
+                        var input = $('<input type="text" class="p-2 mt-1 block w-full bg-gray-50 border border-gray-300 rounded-md shadow-sm">')
+                                    .attr('name', 'dynamic_param_' + key)
+                                    .val(value);
+                        paramDiv.append(label).append(input);
+                        paramGrid.append(paramDiv);
+                    });
+                    $('#param-fields').append(paramGrid);
+                }
+            });
+        });
+
+        // Before submitting the form, validate required fields and handle parameters
+        $('form').submit(function(e) {
+            // Make strategy, data import, commission, and slippage required
+            const requiredFields = ['#id_strategy', '#id_ocl_data_import', '#id_commission', '#id_slippage'];
+            let isValid = true;
+
+            requiredFields.forEach(field => {
+                const value = $(field).val();
+                if (!value || value.trim() === '') {
+                    isValid = false;
+                    // Add error styling
+                    $(field).addClass('border-red-500');
+                    // Add error message if it doesn't exist
+                    const errorMsg = $(field).next('.error-message');
+                    if (!errorMsg.length) {
+                        $(field).after('<p class="error-message text-sm text-red-600 mt-1">This field is required</p>');
+                    }
+                } else {
+                    // Remove error styling and message
+                    $(field).removeClass('border-red-500');
+                    $(field).next('.error-message').remove();
+                }
+            });
+
+            if (!isValid) {
+                e.preventDefault();
+                return false;
+            }
+
+            // Handle parameters as before
+            var parameters = {};
+            $('#param-fields input').each(function() {
+                var name = $(this).attr('name').replace('dynamic_param_', '');
+                var value = $(this).val();
+                parameters[name] = value;
+            });
+            $('#id_parameters').val(JSON.stringify(parameters));
+        });
+
+        // Add input event listeners to remove error styling when user starts typing
+        requiredFields.forEach(field => {
+            $(field).on('input', function() {
+                $(this).removeClass('border-red-500');
+                $(this).next('.error-message').remove();
+            });
+        });
+    });
+</script>
+
 {% endblock %}

@@ -21,13 +21,11 @@ def fetch_and_save_ocl_data(data_import_id):
         start_date=data_import.start_date,
         end_date=data_import.end_date
     )
-    
-    # Iterate through DataFrame rows
-    for _, row in df.iterrows():
-        row_data = parse_row(row)
-        OCLPrice.objects.create(**row_data, data_import=data_import)
-
     try:
+        for _, row in df.iterrows():
+            row_data = parse_row(row)
+            OCLPrice.objects.create(**row_data, data_import=data_import)
+        
         data_import.start_date = df.iloc[0]['Date']
         data_import.end_date = df.iloc[-1]['Date']
         data_import.status = 'completed'
@@ -35,7 +33,6 @@ def fetch_and_save_ocl_data(data_import_id):
     except IntegrityError:
         data_import.status = 'failed'
         data_import.save()
-        return
     
 @login_required
 def data_view(request):

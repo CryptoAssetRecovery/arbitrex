@@ -9,11 +9,10 @@ from django.core.files.base import ContentFile
 from .models import BacktestResult
 from dashboard.models import BestPerformingAlgo, MostWinningAlgo, BestReturnAlgo
 from .analyzers import PortfolioValueAnalyzer, TradeListAnalyzer, OrderListAnalyzer
+from strategies.utils import load_strategies_and_inject_log
 
 import backtrader as bt
 import matplotlib.pyplot as plt
-from sklearn.ensemble import RandomForestClassifier
-from pathlib import Path
 from io import BytesIO
 import pandas as pd
 import datetime
@@ -50,34 +49,6 @@ def get_ocl_historical_data(data_import_id):
         df['Date'] = pd.to_datetime(df['Date']).dt.tz_localize(None)
 
     return df
-
-
-def load_strategies_and_inject_log(strategy_code, capture_log_func):
-    """
-    Execute user strategy code, find the strategy class, and inject a custom log method.
-    """
-    exec_globals = {
-        'capture_strategy_log': capture_log_func,
-        'bt': bt,
-        'pd': pd,
-        'datetime': datetime,
-        'RandomForestClassifier': RandomForestClassifier,
-    }
-
-    exec(strategy_code, exec_globals)
-    UserStrategy = None
-    for obj in exec_globals.values():
-        if isinstance(obj, type) and issubclass(obj, bt.Strategy):
-            UserStrategy = obj
-            break
-
-    if not UserStrategy:
-        raise ValueError("Strategy class not defined or not inheriting from bt.Strategy.")
-
-    # Assign a log method directly
-    UserStrategy.log = lambda self, txt, dt=None: capture_log_func(self, txt, dt)
-    return UserStrategy
-
 
 def run_cerebro_with_data_and_strategy(dataframes, UserStrategy, commission=0.0):
     """
@@ -280,9 +251,10 @@ def run_backtest(backtest_id):
             raise ValueError("No OCL data import ID found for this backtest.")
         data_df = get_ocl_historical_data(backtest.ocl_data_import.id)
 
-        # Load user strategy
-        backtest.strategy_code = backtest.strategy.code
-        backtest.save()
+        # Load user strategy if it hasn't been loaded yet
+        if not backtest.strategy_code:
+            backtest.strategy_code = backtest.strategy.code
+            backtest.save()
         UserStrategy = load_strategies_and_inject_log(backtest.strategy_code, capture_log)
 
         # Run Cerebro

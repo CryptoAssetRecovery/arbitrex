@@ -12,7 +12,7 @@ from django.core.cache import cache
 import uuid
 
 from backtesting.models import BacktestResult
-from .utils import chat_with_openai, chat_with_anthropic
+from .utils import chat_with_openai, chat_with_anthropic, load_strategies_and_inject_log
 from .models import Strategy
 from .forms import StrategyForm
 from .backtrader_docks import BACKTRADER_DOCS
@@ -181,6 +181,14 @@ class StrategyCreateView(LoginRequiredMixin, CreateView):
     success_url = reverse_lazy('strategy_list')
 
     def form_valid(self, form):
+        # Add a check for the parameters field
+        def capture_log():
+            pass
+        
+        strategy_class = load_strategies_and_inject_log(form.instance.code, capture_log)
+        if not hasattr(strategy_class, 'params'):
+            messages.warning(self.request, "Warning: This strategy has no parameters.")
+        
         form.instance.user = self.request.user
         messages.success(self.request, 'Strategy created successfully!')
         return super().form_valid(form)
@@ -209,6 +217,23 @@ class StrategyUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
         context = super().get_context_data(**kwargs)
         context['last_backtest'] = BacktestResult.objects.filter(strategy=self.object).order_by('-created_at').first() if BacktestResult.objects.filter(strategy=self.object).exists() else None
         return context
+    
+    def form_valid(self, form):
+        # Add a check for the parameters field
+        def capture_log():
+            pass
+        
+        strategy_class = load_strategies_and_inject_log(form.instance.code, capture_log)
+        if not hasattr(strategy_class, 'params'):
+            print("No params")
+            messages.warning(self.request, "Warning: This strategy has no parameters.")
+        else:
+            params = strategy_class.params._getpairs()
+            if not params:
+                messages.warning(self.request, "Warning: This strategy has no parameters defined.")
+            else:
+                messages.success(self.request, 'Strategy updated successfully!')
+        return super().form_valid(form)
     
     def form_invalid(self, form):
         # Add all form errors to messages

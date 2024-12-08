@@ -1,5 +1,3 @@
-<!-- strategies/templates/strategies/strategy_form.html -->
-
 {% extends "base.html" %}
 {% load static %}
 
@@ -11,26 +9,24 @@
     <style>
         /* Styles for the main code editor */
         .main-editor .CodeMirror {
-            height: 100% !important;  /* Keep original full-height behavior */
+            height: 100% !important;
             overflow-x: auto;
         }
 
         /* Styles for chat code blocks */
         .chat-code-block .CodeMirror {
-            height: auto !important;  /* Allow chat code blocks to expand based on content */
+            height: auto !important;
             overflow-x: auto;
         }
-        
-        /* Common styles for both */
+
         .CodeMirror-lines {
             padding: 8px 0;
         }
-        
+
         .CodeMirror-linenumber {
             padding: 0 8px;
         }
-        
-        /* Add some spacing between chat code blocks */
+
         .chat-code-block {
             margin: 12px 0;
         }
@@ -83,13 +79,28 @@
             margin-top: 0.5rem;
         }
 
-        /* Lower-profile styling for the model selector */
         .model-selector {
             font-size: 0.875rem;
             padding: 0.25rem 0.5rem;
             border: 1px solid #d1d5db;
             border-radius: 0.375rem;
             background-color: #f9fafb;
+        }
+
+        /* Tailwind Modal Styles */
+        .modal {
+            position: fixed;
+            z-index: 50;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-bg {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
         }
     </style>
 {% endblock %}
@@ -103,7 +114,7 @@
         </h2>
     </div>
 
-    <form method="POST" class="space-y-6">
+    <form method="POST" class="space-y-6" id="strategy-form">
         {% csrf_token %}
 
         <!-- Two Column Layout -->
@@ -187,7 +198,6 @@
                                         Send
                                     </button>
                                 </div>
-                                <!-- Model Selector Dropdown -->
                                 <div class="chat-controls">
                                     <label for="llm_model" class="sr-only">Model</label>
                                     <select id="llm_model" name="llm_model" class="model-selector">
@@ -211,6 +221,19 @@
         </div>
     </form>
 </div>
+
+<!-- Tailwind Modal for Confirmation -->
+<div id="params-modal" class="hidden modal">
+    <div class="modal-bg"></div>
+    <div class="bg-white rounded-lg p-6 z-10 max-w-md w-full">
+        <h3 class="text-lg font-semibold mb-4 text-gray-800">No Params Detected</h3>
+        <p class="mb-4 text-gray-600">It looks like your code doesn't contain a <code>params</code> object. Are you sure you want to save this strategy without parameters?</p>
+        <div class="flex justify-end space-x-3">
+            <button id="params-no" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none">No</button>
+            <button id="params-yes" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none">Yes</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -218,7 +241,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/python/python.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/matchbrackets.min.js"></script>
-    <!-- Include any additional CodeMirror addons if needed -->
 
     <script>
         document.addEventListener("DOMContentLoaded", function() {
@@ -236,9 +258,39 @@
             // Set initial size
             editor.setSize("100%", "100%");
             
-            // Update size when window resizes
+            // Update size on window resize
             window.addEventListener('resize', () => {
                 editor.setSize("100%", "100%");
+            });
+
+            // Modal logic
+            const paramsModal = document.getElementById('params-modal');
+            const paramsYes = document.getElementById('params-yes');
+            const paramsNo = document.getElementById('params-no');
+            let formToSubmit = null;
+
+            paramsYes.addEventListener('click', () => {
+                // Hide modal and submit form
+                paramsModal.classList.add('hidden');
+                if (formToSubmit) formToSubmit.submit();
+            });
+
+            paramsNo.addEventListener('click', () => {
+                // Hide modal, do not submit
+                paramsModal.classList.add('hidden');
+                formToSubmit = null;
+            });
+
+            // Intercept form submission
+            const form = document.getElementById('strategy-form');
+            form.addEventListener('submit', (e) => {
+                const code = editor.getValue();
+                if (!code.includes('params =')) {
+                    // Show modal
+                    e.preventDefault();
+                    formToSubmit = form;
+                    paramsModal.classList.remove('hidden');
+                }
             });
 
             // Chat functionality
@@ -247,11 +299,9 @@
             const sendButton = document.getElementById('send-message');
             const llmModelField = document.getElementById('llm_model');
 
-            // Add message history array to store all messages
             let messageHistory = [];
 
             function addMessage(content, isUser = false) {
-                // Store message in history
                 messageHistory.push({
                     role: isUser ? 'user' : 'assistant',
                     content: content
@@ -269,7 +319,6 @@
                             </div>
                         </div>
                     `;
-                    
                     initializeCodeMirrors(messageDiv);
                 } else {
                     messageDiv.innerHTML = `
@@ -284,17 +333,14 @@
             }
             
             function parseContent(content) {
-                // Configure marked.js
                 marked.setOptions({
                     highlight: function(code, lang) {
-                        // Return undefined to let CodeMirror handle the syntax highlighting
                         return undefined;
                     },
                     breaks: true,
                     gfm: true
                 });
 
-                // Use a regular expression to detect code blocks
                 const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
                 let match;
                 let lastIndex = 0;
@@ -304,20 +350,15 @@
                     const [fullMatch, lang, code] = match;
                     const start = match.index;
                     
-                    // Parse the text before the code block as markdown
                     const beforeCode = content.substring(lastIndex, start);
                     parsed += marked.parse(beforeCode);
                     
-                    // Create a unique identifier for the code block
                     const codeBlockId = `code-block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                    
-                    // Insert a pre > code element with the code
                     parsed += `<pre><code id="${codeBlockId}" class="code-block" data-lang="${lang || 'text'}">${escapeHTML(code)}</code></pre>`;
                     
                     lastIndex = codeBlockRegex.lastIndex;
                 }
                 
-                // Parse any remaining text as markdown
                 const remainingText = content.substring(lastIndex);
                 parsed += marked.parse(remainingText);
                 
@@ -341,7 +382,7 @@
                     textarea.value = code;
                     
                     const codeMirrorHolder = document.createElement('div');
-                    codeMirrorHolder.className = 'chat-code-block';  // Changed class name
+                    codeMirrorHolder.className = 'chat-code-block';
                     
                     block.parentNode.parentNode.replaceChild(codeMirrorHolder, block.parentNode);
                     codeMirrorHolder.appendChild(textarea);
@@ -368,11 +409,9 @@
                 const message = chatInput.value.trim();
                 if (!message) return;
                 
-                // Add user message to chat
                 addMessage(message, true);
                 chatInput.value = '';
 
-                // Add a temporary polling message
                 const pollingMessage = document.createElement('div');
                 pollingMessage.className = 'flex justify-start';
                 pollingMessage.innerHTML = `
@@ -383,7 +422,6 @@
                 chatMessages.appendChild(pollingMessage);
                 chatMessages.scrollTop = chatMessages.scrollHeight;
 
-                // Update the polling message periodically
                 let dots = 1;
                 const pollingInterval = setInterval(() => {
                     pollingMessage.querySelector('p').textContent = '.'.repeat(dots);
@@ -411,8 +449,8 @@
                     });
                     
                     const data = await response.json();
-                    clearInterval(pollingInterval); // Stop updating the polling message
-                    pollingMessage.remove(); // Remove the polling message
+                    clearInterval(pollingInterval);
+                    pollingMessage.remove();
 
                     if (data.success) {
                         addMessage(data.response);
@@ -420,21 +458,19 @@
                         addMessage('Error: ' + data.error);
                     }
                 } catch (error) {
-                    clearInterval(pollingInterval); // Stop updating the polling message
-                    pollingMessage.remove(); // Remove the polling message
+                    clearInterval(pollingInterval);
+                    pollingMessage.remove();
                     addMessage('Error: Failed to send message');
                     console.error('Fetch error:', error);
                 }
             }
             
-            // Update the event listener to handle Shift + Enter for new lines
             chatInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     if (e.shiftKey) {
-                        // Allow default behavior (new line)
                         return;
                     }
-                    e.preventDefault(); // Prevent default Enter behavior
+                    e.preventDefault();
                     sendMessage();
                 }
             });
