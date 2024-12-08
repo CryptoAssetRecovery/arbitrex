@@ -22,7 +22,7 @@ cp .env.example .env
 I hope Im not forgetting anything, Im doing this from memory at like 12 AM lol.
 
 ## Roadmap (notes from an impromptu meeting)
-- TODO: Complete and fix up the test suite
+- TODO: Complete and fix up the test suite (feel free to delete the ones that are already there and broken)
 
 - TODO: Add parameter options to the backtest configuration page
     - And the backtest results page

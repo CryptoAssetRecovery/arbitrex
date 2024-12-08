@@ -8,7 +8,6 @@ from unittest.mock import patch
 
 from .models import OCLDataImport, OCLPrice
 from .forms import OCLDownloadForm
-from .utils import get_historical_data, parse_row
 from .views import fetch_and_save_ocl_data
 
 import pandas as pd
