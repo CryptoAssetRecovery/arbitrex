@@ -148,7 +148,8 @@ class StrategyListView(LoginRequiredMixin, ListView):
     context_object_name = 'strategies'
 
     def get_queryset(self):
-        return Strategy.objects.filter(user=self.request.user).order_by('-created_at')
+        #return Strategy.objects.filter(user=self.request.user).order_by('-created_at')
+        return Strategy.objects.all().order_by('-created_at') # Temporary for ease of use - TODO: add "publish" feature
 
 class StrategyDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
     model = Strategy
